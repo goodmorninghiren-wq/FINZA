@@ -41,8 +41,7 @@ export async function POST(request: Request) {
   const origin = request.headers.get("origin") || "http://localhost:3000";
 
   try {
-    const cookieResponse = NextResponse.next();
-    const { supabase } = await createSupabaseRouteClient(cookieResponse);
+    const { supabase } = await createSupabaseRouteClient();
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -60,10 +59,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const jsonHeaders = { headers: cookieResponse.headers };
-
     if (data.session) {
-      return NextResponse.json({ ok: true, session: true }, jsonHeaders);
+      return NextResponse.json({ ok: true, session: true });
     }
 
     return NextResponse.json(
@@ -72,8 +69,7 @@ export async function POST(request: Request) {
         session: false,
         message:
           "Account created. Check your email to confirm, or ask an admin to disable email confirmation.",
-      },
-      jsonHeaders
+      }
     );
   } catch (err) {
     console.error("[auth/signup]", err);

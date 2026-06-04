@@ -43,8 +43,7 @@ export async function POST(request: Request) {
   const host = new URL(url).host;
 
   try {
-    const cookieResponse = NextResponse.next();
-    const { supabase } = await createSupabaseRouteClient(cookieResponse);
+    const { supabase } = await createSupabaseRouteClient();
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -58,10 +57,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json(
-      { ok: true },
-      { headers: cookieResponse.headers }
-    );
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[auth/login]", err);
     const raw = err instanceof Error ? err.message : "Login failed on server.";

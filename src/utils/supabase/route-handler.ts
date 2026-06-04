@@ -1,16 +1,15 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
 import { getSupabaseEnv } from "@/lib/supabase-config";
 import { getSupabaseFetch } from "@/lib/supabase-fetch";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 /**
- * Supabase client for Route Handlers. Writes session cookies onto `response`
- * so the browser receives Set-Cookie (fixes logout-on-refresh).
+ * Supabase client for Route Handlers. Writes session cookies directly using
+ * the Next.js async cookies() API.
  */
-export async function createSupabaseRouteClient(response: NextResponse) {
+export async function createSupabaseRouteClient() {
   const { url, anonKey } = getSupabaseEnv();
   if (!url || !anonKey) {
     throw new Error("Missing Supabase env vars in .env.local");
@@ -25,12 +24,18 @@ export async function createSupabaseRouteClient(response: NextResponse) {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet: CookieToSet[]) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          // The setAll method was called from a Server Component.
+          // This can be ignored if you have middleware refreshing user sessions.
+        }
       },
     },
   });
 
   return { supabase, url };
 }
+
