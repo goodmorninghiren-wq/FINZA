@@ -6,16 +6,20 @@ import { createClient } from '@/utils/supabase/server';
 export async function GET(request: Request) {
     try {
         const supabase = await createClient();
+
+        // Enforce user identity — never return another user's companies
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const includeInactive = searchParams.get('all') === 'true';
 
-        // We need to bypass the qboClient wrapper slightly to get custom fields like client_email
-        // or ensure qboClient returns it. For now, let's just query Supabase directly here for simplicity
-        // in ensuring we get the email field.
-        // Fetch basic info first. If client_email column is missing, this won't crash the whole fetch
         let query = supabase
             .from('quickbooks_clients')
-            .select('id, name, client_email, is_active, created_at');
+            .select('id, name, client_email, is_active, created_at')
+            .eq('user_id', user.id); // ← scope to current user only
 
         if (!includeInactive) {
             query = query.eq('is_active', true);
@@ -25,7 +29,6 @@ export async function GET(request: Request) {
 
         if (error) throw error;
 
-        // Map data to ensure we only return what's expected, providing fallback for client_email
         const companies = (data || []).map((c: any) => ({
             id: c.id,
             name: c.name,
@@ -42,6 +45,13 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
     try {
         const supabase = await createClient();
+
+        // Enforce user identity — only allow editing the current user's own companies
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { id, client_email } = body;
 
@@ -50,7 +60,8 @@ export async function PATCH(request: Request) {
         const { error } = await supabase
             .from('quickbooks_clients')
             .update({ client_email })
-            .eq('id', id);
+            .eq('id', id)
+            .eq('user_id', user.id); // ← scope to current user only
 
         if (error) throw error;
 

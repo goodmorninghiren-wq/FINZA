@@ -52,12 +52,20 @@ export async function updateSession(request: NextRequest) {
 
     if (user && pathname.startsWith('/login')) {
         const url = request.nextUrl.clone()
-        url.pathname = '/'
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+    }
+
+    if (user && pathname === '/') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
         return NextResponse.redirect(url)
     }
 
     const isPublicPath =
-        pathname.startsWith('/login') || pathname.startsWith('/auth')
+        pathname === '/' ||
+        pathname.startsWith('/login') ||
+        pathname.startsWith('/auth')
 
     if (!user && !authUnreachable && !isPublicPath) {
         const url = request.nextUrl.clone()

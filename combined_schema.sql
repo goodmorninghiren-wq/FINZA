@@ -103,10 +103,11 @@ create policy "Admins can update profiles" on public.profiles for update using (
   exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
 );
 
--- Data isolation policies
+-- Data isolation: each user can only access their own QBO connections
 drop policy if exists "Users can only access their own connections" on public.quickbooks_clients;
-create policy "Allow all authenticated users to access QBO connections" on public.quickbooks_clients 
-  for all using (auth.role() = 'authenticated');
+drop policy if exists "Allow all authenticated users to access QBO connections" on public.quickbooks_clients;
+create policy "Users can only access their own QBO connections" on public.quickbooks_clients
+  for all using (auth.uid() = user_id);
 
 drop policy if exists "Users can only manage their own import rules" on public.import_rules;
 create policy "Users can only manage their own import rules" on public.import_rules 

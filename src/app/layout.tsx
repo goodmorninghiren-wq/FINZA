@@ -16,8 +16,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Finza - QBO Automation",
-  description: "Automated Cash Basis Accounting for CA Firms",
+  title: {
+    default: "Finza — QuickBooks Automation for Accounting Firms",
+    template: "%s | Finza",
+  },
+  description:
+    "Finza helps CA and accounting firms automate QuickBooks Online bank entries, rules-based categorization, and bulk posting.",
+  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
+    : undefined,
 };
 
 export default function RootLayout({

@@ -71,7 +71,15 @@ export async function GET() {
             return NextResponse.json(payload);
         }
 
-        return NextResponse.json(envFallback());
+        // No user-specific settings found — return blank credentials.
+        // New users must set up their own QBO Client ID & Secret before connecting.
+        // Do NOT fall back to shared environment credentials.
+        return NextResponse.json({
+            client_id: '',
+            client_secret: '',
+            environment: 'sandbox',
+            source: null,
+        } as QboSettingsPayload);
     } catch (error) {
         console.error('GET QBO settings error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

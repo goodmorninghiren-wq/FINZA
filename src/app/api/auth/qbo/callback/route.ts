@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const baseUrl = getBaseUrl(request);
 
     if (!code || !realmId) {
-        return NextResponse.redirect(`${baseUrl}/?qbo_error=Missing+code+or+realmId`);
+        return NextResponse.redirect(`${baseUrl}/dashboard?qbo_error=Missing+code+or+realmId`);
     }
 
     try {
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         const existingToken = await tokenStorage.load(supabase, realmId);
         if (existingToken && (Date.now() - existingToken.createdAt < 30000)) {
             console.log('[QBO Callback] Token already fresh. Redirecting to dashboard.');
-            return NextResponse.redirect(`${baseUrl}/`);
+            return NextResponse.redirect(`${baseUrl}/dashboard`);
         }
 
         await qboClient.createToken(supabase, fullUrl);
@@ -53,10 +53,10 @@ export async function GET(request: NextRequest) {
             await tokenStorage.save(supabase, tokens, realmId, companyName);
         }
 
-        console.log(`[QBO Callback] Connected "${companyName}". Redirecting to ${baseUrl}/`);
+        console.log(`[QBO Callback] Connected "${companyName}". Redirecting to ${baseUrl}/dashboard`);
 
         // Success — go back to dashboard
-        return NextResponse.redirect(`${baseUrl}/`);
+        return NextResponse.redirect(`${baseUrl}/dashboard`);
     } catch (error: any) {
         console.error('[QBO Callback] Error:', {
             message: error.message,
@@ -66,6 +66,6 @@ export async function GET(request: NextRequest) {
 
         // Redirect back with error message so the UI can display it
         const errorMsg = encodeURIComponent(error.message || 'QuickBooks connection failed');
-        return NextResponse.redirect(`${baseUrl}/?qbo_error=${errorMsg}`);
+        return NextResponse.redirect(`${baseUrl}/dashboard?qbo_error=${errorMsg}`);
     }
 }

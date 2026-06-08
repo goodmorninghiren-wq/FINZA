@@ -12,19 +12,15 @@ export default function DashboardPage() {
     <QBOProtected>
       <DashboardReportsProvider>
       <div className="space-y-8">
-        {/* 1. Top Section: Key Performance Indicators */}
         <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <KPICards />
         </section>
 
-        {/* 2. Middle Section: Charts & Status */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          {/* Main Chart - Takes 2 columns */}
           <div className="lg:col-span-2">
             <CashFlowChart />
           </div>
 
-          {/* Side Panel - Quick Actions & Expense Split */}
           <div className="space-y-6">
             <div className="glass p-6 rounded-2xl border-white/10 space-y-4">
               <h3 className="text-lg font-bold text-foreground flex items-center">

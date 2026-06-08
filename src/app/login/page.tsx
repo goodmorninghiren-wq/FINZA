@@ -2,21 +2,26 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogIn, UserPlus, Mail, Lock, Loader2, Building2, Eye, EyeOff } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, Loader2, Building2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginForm() {
+    const searchParams = useSearchParams();
+    const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
+    const [activeTab, setActiveTab] = useState(defaultTab);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,7 +69,7 @@ export default function LoginPage() {
                 return;
             }
 
-            window.location.assign('/');
+            window.location.assign('/dashboard');
         } catch (err) {
             console.error('Login error:', err);
             const msg = err instanceof Error ? err.message : '';
@@ -107,7 +112,7 @@ export default function LoginPage() {
             }
 
             if (data.session) {
-                window.location.assign('/');
+                window.location.assign('/dashboard');
                 return;
             }
 
@@ -126,54 +131,83 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-[#050510] relative overflow-hidden">
-            {/* Dynamic Background Elements */}
-            <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[130px] animate-pulse" />
-            <div className="absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] bg-violet-600/15 rounded-full blur-[130px] animate-pulse" style={{ animationDelay: '2s' }} />
-            <div className="absolute top-[40%] right-[20%] w-[20%] h-[20%] bg-blue-500/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '4s' }} />
-
-            <div className="w-full max-w-md relative animate-in fade-in zoom-in duration-500">
-                <div className="flex flex-col items-center mb-8">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-600 shadow-2xl shadow-indigo-500/30 mb-4 animate-pulse-glow">
-                        <Building2 className="h-9 w-9 text-white drop-shadow" />
-                    </div>
-                    <h1 className="text-4xl font-extrabold gradient-text tracking-tight">Finza</h1>
-                    <p className="text-muted-foreground/70 text-xs mt-1.5 uppercase tracking-[0.25em] font-semibold">Accounting Intelligence</p>
+        <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8FAFC]">
+            <div className="w-full max-w-md">
+                <div className="mb-6">
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition-colors hover:text-[#1E40AF]"
+                    >
+                        <ArrowLeft className="h-4 w-4" aria-hidden />
+                        Back to Home
+                    </Link>
                 </div>
 
-                <Card className="border border-white/10 shadow-2xl" style={{ background: 'rgba(15,15,30,0.85)', backdropFilter: 'blur(20px)' }}>
-                    <Tabs defaultValue="login" className="w-full">
-                        <CardHeader className="pb-2">
-                            <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 rounded-xl p-1">
-                                <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-semibold">Login</TabsTrigger>
-                                <TabsTrigger value="signup" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-semibold">Sign Up</TabsTrigger>
+                <div className="flex flex-col items-center mb-8 text-center">
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1E40AF] to-[#6366F1] shadow-lg shadow-blue-500/25">
+                        <Building2 className="h-7 w-7 text-white" aria-hidden />
+                    </div>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Finza</h1>
+                    <p className="mt-1 text-sm text-slate-500">
+                        QuickBooks bank entry automation for accounting firms
+                    </p>
+                </div>
+
+                <Card className="border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <CardHeader className="pb-4">
+                            <TabsList className="grid h-12 w-full grid-cols-2 rounded-xl bg-slate-100 p-1">
+                                <TabsTrigger
+                                    value="login"
+                                    className="rounded-lg text-sm font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-[#1E40AF] data-[state=active]:shadow-sm"
+                                >
+                                    <LogIn className="mr-2 h-4 w-4" aria-hidden />
+                                    Sign In
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="signup"
+                                    className="rounded-lg text-sm font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-[#1E40AF] data-[state=active]:shadow-sm"
+                                >
+                                    <UserPlus className="mr-2 h-4 w-4" aria-hidden />
+                                    Create Account
+                                </TabsTrigger>
                             </TabsList>
+                            <p className="pt-3 text-center text-xs text-slate-500">
+                                {activeTab === 'login'
+                                    ? 'Sign in with your firm email and password.'
+                                    : 'Register a new account for your firm.'}
+                            </p>
                         </CardHeader>
 
                         <CardContent className="px-6">
                             {error && (
-                                <div className={`p-3 rounded-xl text-xs font-medium mb-4 animate-in slide-in-from-top-2 flex items-start gap-2 ${
-                                    error.includes('Success')
-                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                }`}>
+                                <div
+                                    role="alert"
+                                    className={`mb-4 flex items-start gap-2 rounded-xl p-3 text-xs font-medium ${
+                                        error.includes('Success')
+                                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                                            : 'border border-red-200 bg-red-50 text-red-800'
+                                    }`}
+                                >
                                     <span className="mt-0.5">{error.includes('Success') ? '✓' : '⚠'}</span>
                                     <span>{error}</span>
                                 </div>
                             )}
 
-                            <TabsContent value="login">
+                            <TabsContent value="login" className="mt-0">
                                 <form onSubmit={handleLogin} className="space-y-5">
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="email" className="text-sm text-white/70 font-medium">Email</Label>
+                                        <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                                            Email
+                                        </Label>
                                         <div className="relative">
-                                            <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-white/30" />
+                                            <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" aria-hidden />
                                             <Input
                                                 id="email"
                                                 type="email"
                                                 autoComplete="username"
                                                 placeholder="admin@firm.com"
-                                                className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-indigo-500/60 focus:ring-indigo-500/20 rounded-xl transition-all"
+                                                className="h-12 rounded-xl border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#1E40AF]/30"
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                                 required
@@ -181,14 +215,16 @@ export default function LoginPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="password" className="text-sm text-white/70 font-medium">Password</Label>
+                                        <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                                            Password
+                                        </Label>
                                         <div className="relative">
-                                            <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-white/30" />
+                                            <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" aria-hidden />
                                             <Input
                                                 id="password"
                                                 type={showPassword ? "text" : "password"}
                                                 autoComplete="current-password"
-                                                className="pl-10 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-indigo-500/60 focus:ring-indigo-500/20 rounded-xl transition-all"
+                                                className="h-12 rounded-xl border-slate-200 bg-white pl-10 pr-11 text-slate-900 focus-visible:ring-[#1E40AF]/30"
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 required
@@ -196,8 +232,9 @@ export default function LoginPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3.5 top-3.5 text-white/30 hover:text-white/70 transition-colors"
+                                                className="absolute right-3.5 top-3.5 text-slate-400 transition-colors hover:text-slate-600"
                                                 tabIndex={-1}
+                                                aria-label={showPassword ? "Hide password" : "Show password"}
                                             >
                                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
@@ -205,26 +242,35 @@ export default function LoginPage() {
                                     </div>
                                     <Button
                                         type="submit"
-                                        className="w-full h-12 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all"
+                                        className="h-12 w-full rounded-xl bg-[#1E40AF] font-semibold text-white shadow-md shadow-blue-500/20 hover:bg-[#1e3a8a]"
                                         disabled={isLoading}
                                     >
-                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LogIn className="mr-2 h-4 w-4" /> Sign In</>}
+                                        {isLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <LogIn className="mr-2 h-4 w-4" aria-hidden />
+                                                Sign In
+                                            </>
+                                        )}
                                     </Button>
                                 </form>
                             </TabsContent>
 
-                            <TabsContent value="signup">
+                            <TabsContent value="signup" className="mt-0">
                                 <form onSubmit={handleSignUp} className="space-y-5">
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="signup-email" className="text-sm text-white/70 font-medium">Email Address</Label>
+                                        <Label htmlFor="signup-email" className="text-sm font-medium text-slate-700">
+                                            Email Address
+                                        </Label>
                                         <div className="relative">
-                                            <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-white/30" />
+                                            <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" aria-hidden />
                                             <Input
                                                 id="signup-email"
                                                 type="email"
                                                 autoComplete="email"
-                                                placeholder="name@example.com"
-                                                className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-indigo-500/60 focus:ring-indigo-500/20 rounded-xl transition-all"
+                                                placeholder="name@firm.com"
+                                                className="h-12 rounded-xl border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#1E40AF]/30"
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                                 required
@@ -232,15 +278,17 @@ export default function LoginPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="signup-password" className="text-sm text-white/70 font-medium">Create Password</Label>
+                                        <Label htmlFor="signup-password" className="text-sm font-medium text-slate-700">
+                                            Password
+                                        </Label>
                                         <div className="relative">
-                                            <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-white/30" />
+                                            <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" aria-hidden />
                                             <Input
                                                 id="signup-password"
                                                 type={showPassword ? "text" : "password"}
                                                 autoComplete="new-password"
-                                                placeholder="••••••••"
-                                                className="pl-10 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-indigo-500/60 focus:ring-indigo-500/20 rounded-xl transition-all"
+                                                placeholder="Create a secure password"
+                                                className="h-12 rounded-xl border-slate-200 bg-white pl-10 pr-11 text-slate-900 focus-visible:ring-[#1E40AF]/30"
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 required
@@ -248,39 +296,57 @@ export default function LoginPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3.5 top-3.5 text-white/30 hover:text-white/70 transition-colors"
+                                                className="absolute right-3.5 top-3.5 text-slate-400 transition-colors hover:text-slate-600"
                                                 tabIndex={-1}
+                                                aria-label={showPassword ? "Hide password" : "Show password"}
                                             >
                                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                                        <p className="text-[10px] text-indigo-300/70 leading-relaxed uppercase tracking-wider font-bold italic">
-                                            Note: The first person to register on this instance will be granted full Administrative access.
+                                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                                        <p className="text-xs leading-relaxed text-[#1E40AF]">
+                                            The first person to register on this instance is granted full administrative access.
                                         </p>
                                     </div>
                                     <Button
                                         type="submit"
-                                        className="w-full h-12 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all"
+                                        className="h-12 w-full rounded-xl bg-[#6366F1] font-semibold text-white shadow-md shadow-indigo-500/20 hover:bg-[#4f46e5]"
                                         disabled={isLoading}
                                     >
-                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserPlus className="mr-2 h-4 w-4" /> Create Account</>}
+                                        {isLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <UserPlus className="mr-2 h-4 w-4" aria-hidden />
+                                                Create Account
+                                            </>
+                                        )}
                                     </Button>
                                 </form>
                             </TabsContent>
                         </CardContent>
 
-                        <CardFooter className="flex flex-col gap-4 px-6 pt-0 pb-6">
-                            <div className="text-center w-full">
-                                <p className="text-xs text-white/20">
-                                    By continuing, you agree to our Terms of Service and Privacy Policy.
-                                </p>
-                            </div>
+                        <CardFooter className="px-6 pb-6 pt-0">
+                            <p className="w-full text-center text-xs text-slate-400">
+                                By continuing, you agree to our Terms of Service and Privacy Policy.
+                            </p>
                         </CardFooter>
                     </Tabs>
                 </Card>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+                <Loader2 className="h-8 w-8 animate-spin text-[#1E40AF]" />
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 }

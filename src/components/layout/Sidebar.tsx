@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 const MENU_ITEMS = [
-    { label: "Dashboard", icon: LayoutDashboard, href: "/" },
+    { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "Post Bank Entries", icon: Upload, href: "/bank-entries" },
     { label: "MIS Reports", icon: PieChart, href: "/reports/mis" },
     { label: "Financial Statements", icon: FileText, href: "/reports/financials" },

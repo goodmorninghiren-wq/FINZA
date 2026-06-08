@@ -50,12 +50,22 @@ export const tokenStorage = {
 
     load: async (supabase: any, realmId?: string): Promise<QBOTokens | null> => {
         try {
-            let query = supabase.from('quickbooks_clients').select('*');
+            // Always scope by the currently authenticated user to prevent cross-user token access
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.error('No authenticated user found while loading tokens');
+                return null;
+            }
+
+            let query = supabase
+                .from('quickbooks_clients')
+                .select('*')
+                .eq('user_id', user.id); // ← CRITICAL: scope to current user only
 
             if (realmId) {
                 query = query.eq('id', realmId);
             } else {
-                query = query.eq('is_active', true).limit(1); // Default to first active one
+                query = query.eq('is_active', true).limit(1);
             }
 
             const { data, error } = await query;
@@ -82,12 +92,19 @@ export const tokenStorage = {
         }
     },
 
-    // Fetch connected companies for UI
+    // Fetch connected companies for UI — scoped to the authenticated user
     getCompanies: async (supabase: any, includeInactive = false) => {
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.error('No authenticated user found while fetching companies');
+                return [];
+            }
+
             let query = supabase
                 .from('quickbooks_clients')
-                .select('id, name');
+                .select('id, name')
+                .eq('user_id', user.id); // ← CRITICAL: scope to current user only
 
             if (!includeInactive) {
                 query = query.eq('is_active', true);
@@ -107,22 +124,31 @@ export const tokenStorage = {
         }
     },
 
+    // Deactivate tokens — scoped to the authenticated user to prevent cross-user disconnects
     clear: async (supabase: any, realmId?: string) => {
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.error('No authenticated user found while clearing tokens');
+                return;
+            }
+
             if (realmId) {
                 const { error } = await supabase
                     .from('quickbooks_clients')
                     .update({ is_active: false })
-                    .eq('id', realmId);
+                    .eq('id', realmId)
+                    .eq('user_id', user.id); // ← scope to current user only
                 if (error) console.error('Error deactivating tokens:', error);
-                else console.log('Tokens deactivated in DB');
+                else console.log('Tokens deactivated in DB for user:', user.id);
             } else {
                 const { error } = await supabase
                     .from('quickbooks_clients')
                     .update({ is_active: false })
+                    .eq('user_id', user.id) // ← scope to current user only
                     .neq('id', 'placeholder');
                 if (error) console.error('Error clearing all tokens:', error);
-                else console.log('All tokens deactivated in DB');
+                else console.log('All tokens deactivated in DB for user:', user.id);
             }
         } catch (error) {
             console.error('Error clearing tokens:', error);
