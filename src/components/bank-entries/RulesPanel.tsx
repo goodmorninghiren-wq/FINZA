@@ -714,7 +714,11 @@ export function RulesPanel() {
 
                     {/* ── Rule List — Compact High Density ──────────────────── */}
                     {displayedRules.length > 0 ? displayedRules.map((rule, idx) => (
-                        <div key={rule.id} className="group relative rounded-lg border border-border/80 bg-card hover:border-primary/40 hover:shadow-sm transition-all duration-150">
+                        <div
+                            key={rule.id}
+                            onClick={() => startEdit(rule)}
+                            className="group relative rounded-lg border border-border/80 bg-card hover:border-primary/40 hover:shadow-sm transition-all duration-150 cursor-pointer"
+                        >
                             <div className="flex items-center gap-2.5 px-3 py-2">
                                 {/* Rule Index Badge */}
                                 <div className="flex-shrink-0 h-5 w-5 rounded-full bg-muted/80 border border-border flex items-center justify-center">
@@ -752,8 +756,8 @@ export function RulesPanel() {
                                     </div>
                                 </div>
 
-                                {/* Right Controls */}
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {/* Right Controls (stop propagation so clicking controls doesn't trigger edit) */}
+                                <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <Switch checked={rule.is_active !== false} onCheckedChange={() => handleToggleActive(rule)} className="data-[state=checked]:bg-primary scale-75" />
                                     <div className="relative">
                                         <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-foreground rounded"
@@ -763,16 +767,16 @@ export function RulesPanel() {
                                         {openMenuId === rule.id && (
                                             <div className="absolute right-0 top-7 z-50 bg-card border border-border rounded-lg shadow-xl py-1 w-36">
                                                 <button className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs text-foreground hover:bg-accent rounded mx-1 w-[calc(100%-8px)]"
-                                                    onClick={() => startEdit(rule)}>
+                                                    onClick={(e) => { e.stopPropagation(); startEdit(rule); }}>
                                                     <Pencil className="h-3 w-3" /> Edit Rule
                                                 </button>
                                                 <button className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs text-foreground hover:bg-accent rounded mx-1 w-[calc(100%-8px)]"
-                                                    onClick={() => handleDuplicate(rule)}>
+                                                    onClick={(e) => { e.stopPropagation(); handleDuplicate(rule); }}>
                                                     <Copy className="h-3 w-3" /> Duplicate
                                                 </button>
                                                 <div className="border-t border-border my-1" />
                                                 <button className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs text-destructive hover:bg-destructive/10 rounded mx-1 w-[calc(100%-8px)]"
-                                                    onClick={() => { void deleteRule(rule.id); setOpenMenuId(null); }}>
+                                                    onClick={(e) => { e.stopPropagation(); void deleteRule(rule.id); setOpenMenuId(null); }}>
                                                     <Trash2 className="h-3 w-3" /> Delete
                                                 </button>
                                             </div>
