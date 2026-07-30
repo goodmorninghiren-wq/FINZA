@@ -283,27 +283,14 @@ export function RulesPanel() {
         setSyncDialogOpen(false); setSelectedSuggestions([]);
     };
 
-    // ── QBO Push: Export rules to QBO ───────────────────────────────
+    // ── QBO Push: Export rules to QBO as QBO-compatible Excel ────────
     const handlePushToQBO = async () => {
         if (!activeCompanyId || selectedPushRules.length === 0) return;
         setIsPushing(true);
         try {
             const rulesToPush = currentCompanyRules.filter(r => selectedPushRules.includes(r.id));
-            const res = await fetch('/api/qbo/rules-sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ companyId: activeCompanyId, rules: rulesToPush, direction: 'export' })
-            });
-            if (res.ok) {
-                const result = await res.json();
-                // Download exported payload as JSON
-                const blob = new Blob([JSON.stringify(result.exportPayload, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = `FINZA_Rules_QBO_Export_${new Date().toISOString().split('T')[0]}.json`;
-                a.click(); URL.revokeObjectURL(url);
-                setSyncSuccess({ exported: result.exported });
-            }
+            exportQBOExcel(rulesToPush, `QBO_Push_Rules_${selectedCompany?.name?.replace(/ /g, '_') || 'FINZA'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            setSyncSuccess({ exported: rulesToPush.length });
         } catch (e: any) {
             setSyncError(e.message);
         } finally {
@@ -312,24 +299,140 @@ export function RulesPanel() {
         }
     };
 
-    // ── Excel Export ───────────────────────────────────────────────
-    const handleExcelExport = () => {
-        if (currentCompanyRules.length === 0) { alert("No rules to export."); return; }
-        const data = currentCompanyRules.map(rule => ({
-            "Rule Name": rule.rule_name,
-            "Transaction Type": rule.rule_type,
-            "Match Type": rule.matchType,
-            "Values": rule.conditions?.map(c => `${c.field}|${c.operator}|${c.value}`).join(";; "),
-            "Ledger Account": rule.actions.ledger,
-            "Contact Name": [...customers, ...vendors].find((c: any) => c.Id === rule.actions.contactId)?.DisplayName || ""
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Rules");
-        XLSX.writeFile(wb, `Rules_Export_${selectedCompany.name.replace(/ /g, "_")}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    // ── QBO ruleType mapping ────────────────────────────────────────
+    // Matches QBO's bank rules import schema exactly.
+    // ruleType encodes BOTH the field and operator in a single integer.
+    const getQBORuleType = (field: string, operator: string): number => {
+        const map: Record<string, Record<string, number>> = {
+            Description: {
+                contains: 0, not_contains: 1, starts_with: 2, ends_with: 3,
+                equals: 4, eq: 4,
+            },
+            Payee: {
+                contains: 5, not_contains: 6, starts_with: 7, ends_with: 8,
+                equals: 9, eq: 9,
+            },
+            Vendor: {
+                contains: 5, not_contains: 6, starts_with: 7, ends_with: 8,
+                equals: 9, eq: 9,
+            },
+            Amount: {
+                gt: 10, gte: 10, lt: 11, lte: 11, eq: 12, equals: 12,
+            },
+            Reference: {
+                contains: 13, starts_with: 14, equals: 15, eq: 15,
+            },
+            Type: {
+                equals: 16, eq: 16, contains: 16,
+            },
+        };
+        return map[field]?.[operator] ?? 0;
     };
 
-    // ── Excel Import ───────────────────────────────────────────────
+    // ── QBO actionType mapping ─────────────────────────────────────
+    // actionType 0 = Category (account name)
+    // actionType 1 = Transaction type string
+    // actionType 2 = Payee / vendor name
+    // actionType 8 = Auto-confirm ("true" / "false")
+    const buildQBOActions = (rule: Rule): { actionType: number; value: string }[] => {
+        const actions: { actionType: number; value: string }[] = [];
+        // Category (ledger account) — always present
+        if (rule.actions?.ledger) {
+            actions.push({ actionType: 0, value: rule.actions.ledger });
+        }
+        // Transaction type
+        if (rule.rule_type) {
+            actions.push({ actionType: 1, value: rule.rule_type });
+        }
+        // Vendor / Customer name
+        const contactName = [...customers, ...vendors].find(
+            (c: any) => c.Id === rule.actions?.contactId
+        )?.DisplayName;
+        if (contactName) {
+            actions.push({ actionType: 2, value: contactName });
+        }
+        // Auto-confirm
+        actions.push({ actionType: 8, value: String(rule.is_active !== false) });
+        return actions;
+    };
+
+    // ── Core QBO Excel builder ─────────────────────────────────────
+    const exportQBOExcel = (rulesToExport: Rule[], filename: string) => {
+        // QBO requires exactly these 3 column headers
+        const rows = rulesToExport.map(rule => {
+            // Build ruleConditions array
+            const ruleConditions = (rule.conditions || []).map(c => ({
+                ruleType: getQBORuleType(c.field, c.operator),
+                value: c.value,
+            }));
+
+            const ruleConditionsJSON = JSON.stringify({
+                ruleConditions,
+                isAndRule: (rule.matchType || 'AND') === 'AND',
+            });
+
+            const ruleOutputsJSON = JSON.stringify({
+                ruleActions: buildQBOActions(rule),
+            });
+
+            return {
+                'Rule Name': rule.rule_name,
+                'Rule Conditions': ruleConditionsJSON,
+                'Rule Outputs': ruleOutputsJSON,
+            };
+        });
+
+        // Build worksheet with fixed column order
+        const ws = XLSX.utils.json_to_sheet(rows, {
+            header: ['Rule Name', 'Rule Conditions', 'Rule Outputs'],
+        });
+
+        // Set column widths for readability
+        ws['!cols'] = [
+            { wch: 30 },  // Rule Name
+            { wch: 60 },  // Rule Conditions
+            { wch: 60 },  // Rule Outputs
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Rules');
+        XLSX.writeFile(wb, filename);
+    };
+
+    // ── Excel Export (QBO-compatible format) ──────────────────────
+    const handleExcelExport = () => {
+        if (currentCompanyRules.length === 0) { alert('No rules to export.'); return; }
+        exportQBOExcel(
+            currentCompanyRules,
+            `QBO_Rules_${selectedCompany?.name?.replace(/ /g, '_') || 'FINZA'}_${new Date().toISOString().split('T')[0]}.xlsx`
+        );
+    };
+
+    // ── QBO ruleType → field + operator reverse mapping ───────────
+    const fromQBORuleType = (ruleType: number): { field: string; operator: string } => {
+        const map: Record<number, { field: string; operator: string }> = {
+            0:  { field: 'Description', operator: 'contains' },
+            1:  { field: 'Description', operator: 'not_contains' },
+            2:  { field: 'Description', operator: 'starts_with' },
+            3:  { field: 'Description', operator: 'ends_with' },
+            4:  { field: 'Description', operator: 'equals' },
+            5:  { field: 'Payee', operator: 'contains' },
+            6:  { field: 'Payee', operator: 'not_contains' },
+            7:  { field: 'Payee', operator: 'starts_with' },
+            8:  { field: 'Payee', operator: 'ends_with' },
+            9:  { field: 'Payee', operator: 'equals' },
+            10: { field: 'Amount', operator: 'gt' },
+            11: { field: 'Amount', operator: 'lt' },
+            12: { field: 'Amount', operator: 'equals' },
+            13: { field: 'Reference', operator: 'contains' },
+            14: { field: 'Reference', operator: 'starts_with' },
+            15: { field: 'Reference', operator: 'equals' },
+            16: { field: 'Type', operator: 'equals' },
+        };
+        return map[ruleType] || { field: 'Description', operator: 'contains' };
+    };
+
+    // ── Excel Import (supports QBO format AND legacy format) ───────
     const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -339,35 +442,98 @@ export function RulesPanel() {
             const ws = wb.Sheets[wb.SheetNames[0]];
             const data: any[] = XLSX.utils.sheet_to_json(ws);
             if (data.length === 0) { alert("No data found in Excel file."); return; }
+
+            // Detect format: QBO uses "Rule Conditions" column with JSON
+            const isQBOFormat = data[0] && 'Rule Conditions' in data[0];
             let count = 0;
+
             for (const row of data) {
-                const conditionsRaw = row["Values"] || "";
-                const parsedConditions = conditionsRaw.split(";; ").map((cStr: string) => {
-                    const parts = cStr.split("|");
-                    if (parts.length === 3) return { id: Math.random().toString(36).substr(2, 9), field: parts[0], operator: parts[1], value: parts[2] };
-                    return null;
-                }).filter(Boolean);
-                let cId = undefined;
-                if (row["Contact Name"]) {
-                    const contact = [...customers, ...vendors].find((c: any) => c.DisplayName === row["Contact Name"]);
-                    if (contact) cId = contact.Id;
+                try {
+                    let parsedConditions: any[] = [];
+                    let ruleType = 'Expense';
+                    let ledger = 'Uncategorized';
+                    let matchType = 'AND';
+                    let ruleName = row['Rule Name'] || `Imported Rule ${count + 1}`;
+                    let contactId: string | undefined;
+
+                    if (isQBOFormat) {
+                        // ── Parse QBO JSON format ──────────────────
+                        const conditionsRaw = row['Rule Conditions'] || '{}';
+                        const outputsRaw = row['Rule Outputs'] || '{}';
+
+                        let conditionsParsed: any = {};
+                        let outputsParsed: any = {};
+                        try { conditionsParsed = JSON.parse(conditionsRaw); } catch { /* ignore */ }
+                        try { outputsParsed = JSON.parse(outputsRaw); } catch { /* ignore */ }
+
+                        matchType = conditionsParsed.isAndRule === false ? 'OR' : 'AND';
+
+                        parsedConditions = (conditionsParsed.ruleConditions || []).map((rc: any) => {
+                            const { field, operator } = fromQBORuleType(rc.ruleType ?? 0);
+                            return {
+                                id: Math.random().toString(36).substr(2, 9),
+                                field,
+                                operator,
+                                value: rc.value || '',
+                            };
+                        });
+
+                        for (const action of (outputsParsed.ruleActions || [])) {
+                            if (action.actionType === 0) ledger = action.value;
+                            if (action.actionType === 1) ruleType = action.value;
+                            if (action.actionType === 2) {
+                                // Match vendor or customer by display name
+                                const contact = [...customers, ...vendors].find(
+                                    (c: any) => c.DisplayName === action.value
+                                );
+                                if (contact) contactId = contact.Id;
+                            }
+                        }
+                    } else {
+                        // ── Parse legacy pipe-separated format ──────
+                        const conditionsRaw = row['Values'] || '';
+                        parsedConditions = conditionsRaw.split(';; ').map((cStr: string) => {
+                            const parts = cStr.split('|');
+                            if (parts.length === 3) {
+                                return { id: Math.random().toString(36).substr(2, 9), field: parts[0], operator: parts[1], value: parts[2] };
+                            }
+                            return null;
+                        }).filter(Boolean);
+
+                        ruleType = row['Transaction Type'] || 'Expense';
+                        ledger = row['Ledger Account'] || 'Uncategorized';
+                        matchType = row['Match Type'] || 'AND';
+
+                        if (row['Contact Name']) {
+                            const contact = [...customers, ...vendors].find(
+                                (c: any) => c.DisplayName === row['Contact Name']
+                            );
+                            if (contact) contactId = contact.Id;
+                        }
+                    }
+
+                    await addRule({
+                        client_id: selectedCompany.id,
+                        rule_name: ruleName,
+                        rule_type: ruleType as any,
+                        matchType: matchType as 'AND' | 'OR',
+                        conditions: parsedConditions.length > 0
+                            ? parsedConditions
+                            : [{ id: Math.random().toString(36).substr(2, 9), field: 'Description', operator: 'contains', value: '' }],
+                        actions: { ledger, contactId },
+                        is_active: true,
+                    });
+                    count++;
+                } catch (err) {
+                    console.error('Row import error:', err);
                 }
-                await addRule({
-                    client_id: selectedCompany.id,
-                    rule_name: row["Rule Name"] || `Imported Rule ${count + 1}`,
-                    rule_type: row["Transaction Type"] || "Expense",
-                    matchType: row["Match Type"] || "AND",
-                    conditions: parsedConditions.length > 0 ? parsedConditions : [{ id: Math.random().toString(36).substr(2, 9), field: 'Description', operator: 'contains', value: '' }],
-                    actions: { ledger: row["Ledger Account"] || "Uncategorized", contactId: cId },
-                    is_active: true
-                });
-                count++;
             }
-            alert(`Successfully imported ${count} rules.`);
-            e.target.value = "";
+            alert(`Successfully imported ${count} rule${count !== 1 ? 's' : ''} (${isQBOFormat ? 'QBO format' : 'legacy format'}).`);
+            e.target.value = '';
         };
         reader.readAsBinaryString(file);
     };
+
 
     // ── Condition Summary ──────────────────────────────────────────
     const getConditionSummary = (rule: Rule) => {
