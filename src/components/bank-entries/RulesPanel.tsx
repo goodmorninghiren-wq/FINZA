@@ -503,111 +503,103 @@ export function RulesPanel() {
     };
 
     return (
-        <div className="flex flex-col h-full gap-0">
+    return (
+        <div className="flex flex-col h-full gap-2 min-h-0 overflow-hidden">
 
-            {/* ── QBO Sync Bar ─────────────────────────────────────────── */}
-            <div className="rounded-xl border border-border bg-gradient-to-r from-primary/5 via-card to-primary/5 p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                        <Zap className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-foreground">QBO Rule Sync</p>
-                        <p className="text-xs text-muted-foreground">
-                            {lastSynced ? `Last synced: ${lastSynced}` : 'Sync rules with QuickBooks Online'}
-                        </p>
-                    </div>
+            {/* ── Compact Frozen Top Bar (Stats + QBO Sync Controls) ───── */}
+            <div className="flex-shrink-0 rounded-xl border border-border bg-card p-2 flex flex-col sm:flex-row items-center justify-between gap-2">
+                {/* Stats Pills */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                        { label: 'Total', value: stats.total, color: 'bg-primary/10 text-primary border-primary/20' },
+                        { label: 'Expense', value: stats.expense, color: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
+                        { label: 'Income', value: stats.income, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+                        { label: 'Other', value: stats.other, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+                    ].map(s => (
+                        <div key={s.label} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${s.color}`}>
+                            <span>{s.label}:</span>
+                            <span className="font-bold">{s.value}</span>
+                        </div>
+                    ))}
+
                     {syncSuccess && (
-                        <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            {syncSuccess.imported !== undefined && `${syncSuccess.imported} rules imported`}
-                            {syncSuccess.exported !== undefined && `${syncSuccess.exported} rules exported`}
+                        <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {syncSuccess.imported !== undefined && `${syncSuccess.imported} in`}
+                            {syncSuccess.exported !== undefined && `${syncSuccess.exported} out`}
                         </div>
                     )}
                     {syncError && (
-                        <div className="flex items-center gap-1.5 bg-destructive/10 border border-destructive/20 rounded-lg px-2.5 py-1 text-xs text-destructive font-medium">
-                            <AlertCircle className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-1 bg-destructive/10 border border-destructive/20 rounded-lg px-2 py-0.5 text-xs text-destructive font-medium">
+                            <AlertCircle className="h-3 w-3" />
                             {syncError}
                         </div>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* QBO Sync Action Buttons */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                     <Button
                         size="sm" variant="outline"
-                        className="h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 gap-1.5"
+                        className="h-7 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 gap-1 px-2.5"
                         onClick={handleSyncFromQBO}
                         disabled={isSyncing || !activeCompanyId}
                     >
-                        {isSyncing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CloudDownload className="h-3.5 w-3.5" />}
-                        {isSyncing ? 'Scanning QBO...' : 'Pull from QBO'}
+                        {isSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CloudDownload className="h-3 w-3" />}
+                        {isSyncing ? 'Scanning...' : 'Pull QBO'}
                     </Button>
                     <Button
                         size="sm" variant="outline"
-                        className="h-8 text-xs font-medium border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-1.5"
+                        className="h-7 text-xs font-medium border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-1 px-2.5"
                         onClick={() => { setSelectedPushRules(currentCompanyRules.map(r => r.id)); setPushDialogOpen(true); }}
                         disabled={isPushing || !activeCompanyId || currentCompanyRules.length === 0}
                     >
-                        {isPushing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CloudUpload className="h-3.5 w-3.5" />}
-                        Push to QBO
+                        {isPushing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CloudUpload className="h-3 w-3" />}
+                        Push QBO
                     </Button>
                 </div>
             </div>
 
-            {/* ── Stats Row ────────────────────────────────────────────── */}
-            <div className="grid grid-cols-4 gap-2.5 mb-4">
-                {[
-                    { label: 'Total Rules', value: stats.total, icon: SlidersHorizontal, color: 'text-primary' },
-                    { label: 'Expense', value: stats.expense, icon: TrendingUp, color: 'text-red-500' },
-                    { label: 'Income', value: stats.income, icon: BarChart3, color: 'text-emerald-500' },
-                    { label: 'Other', value: stats.other, icon: Filter, color: 'text-blue-500' },
-                ].map(s => (
-                    <div key={s.label} className="rounded-xl border border-border bg-card p-3 flex items-center gap-2.5">
-                        <s.icon className={`h-4 w-4 ${s.color} flex-shrink-0`} />
-                        <div>
-                            <p className="text-lg font-bold text-foreground leading-none">{s.value}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
+            {/* ── Main Rules Container (Maximizes Screen Height) ───────── */}
+            <Card className="flex-1 min-h-0 flex flex-col overflow-hidden border border-border shadow-sm">
+                <CardHeader className="flex-shrink-0 flex flex-col gap-2 py-2 px-3 border-b border-border bg-card/80 backdrop-blur-sm">
+                    <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                        {/* Search & Filter */}
+                        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                            <Input className="h-7 text-xs flex-1 bg-muted/30 border-border" placeholder="Search rules, accounts, conditions..."
+                                value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <Select value={filterType} onValueChange={setFilterType}>
+                                <SelectTrigger className="h-7 text-xs w-[110px] bg-muted/30 border-border"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Types</SelectItem>
+                                    {TRANSACTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    </div>
-                ))}
-            </div>
 
-            <Card className="flex-1 flex flex-col overflow-hidden">
-                <CardHeader className="flex flex-col gap-3 py-3 px-4 border-b border-border">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold">Automation Rules</CardTitle>
-                        <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
                                 onClick={() => setIsImportOpen(true)} title="Copy rules from another client">
                                 <Copy className="h-3.5 w-3.5" /> Copy
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
                                 onClick={() => document.getElementById('rule-import-input')?.click()} title="Import from .xls (QBO format)">
                                 <Upload className="h-3.5 w-3.5" /> Import .xls
                             </Button>
                             <input type="file" id="rule-import-input" className="hidden" accept=".xls,.xlsx" onChange={handleExcelImport} />
-                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
                                 onClick={handleExcelExport} title="Export as QBO-compatible .xls">
                                 <Download className="h-3.5 w-3.5" /> Export .xls
                             </Button>
-                            <Button size="sm" className="h-7 text-xs glow-primary gap-1 font-medium" onClick={() => setIsAdding(true)}>
+                            <Button size="sm" className="h-7 text-xs glow-primary gap-1 font-medium px-2.5" onClick={() => setIsAdding(true)}>
                                 <Plus className="h-3.5 w-3.5" /> New Rule
                             </Button>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        <Input className="h-7 text-xs flex-1 bg-muted/30 border-border" placeholder="Search rules, accounts, conditions..."
-                            value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="h-7 text-xs w-[130px] bg-muted/30 border-border"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">All Types</SelectItem>
-                                {TRANSACTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </CardHeader>
 
-                <CardContent className="flex-1 overflow-y-auto p-3 space-y-2">
+                <CardContent className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5">
 
                     {/* ── Create/Edit Drawer ────────────────────────────────── */}
                     <Sheet open={isAdding} onOpenChange={(open) => { if (!open) resetForm(); else setIsAdding(true); }}>
@@ -721,59 +713,68 @@ export function RulesPanel() {
                         </SheetContent>
                     </Sheet>
 
-                    {/* ── Rule List ─────────────────────────────────────────── */}
+                    {/* ── Rule List — Compact High Density ──────────────────── */}
                     {displayedRules.length > 0 ? displayedRules.map((rule, idx) => (
-                        <div key={rule.id} className="group relative rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all duration-200">
-                            <div className="flex items-start gap-3 p-3.5">
-                                <div className="flex-shrink-0 h-6 w-6 rounded-full bg-muted/60 border border-border flex items-center justify-center mt-0.5">
+                        <div key={rule.id} className="group relative rounded-lg border border-border/80 bg-card hover:border-primary/40 hover:shadow-sm transition-all duration-150">
+                            <div className="flex items-center gap-2.5 px-3 py-2">
+                                {/* Rule Index Badge */}
+                                <div className="flex-shrink-0 h-5 w-5 rounded-full bg-muted/80 border border-border flex items-center justify-center">
                                     <span className="text-[10px] font-bold text-muted-foreground">{idx + 1}</span>
                                 </div>
+
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">{rule.rule_name}</p>
+                                    {/* Line 1: Name + Type Badge + Match Type */}
+                                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                        <p className="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate max-w-[260px]">
+                                            {rule.rule_name}
+                                        </p>
                                         {rule.rule_type && (
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${TYPE_COLORS[rule.rule_type] || TYPE_COLORS['Expense']}`}>
+                                            <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full border flex-shrink-0 ${TYPE_COLORS[rule.rule_type] || TYPE_COLORS['Expense']}`}>
                                                 {rule.rule_type}
                                             </span>
                                         )}
-                                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0 ${rule.matchType === 'OR'
+                                        <span className={`text-[9px] font-extrabold px-1 py-0.2 rounded uppercase tracking-wider flex-shrink-0 ${rule.matchType === 'OR'
                                             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
                                             : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'}`}>
                                             {rule.matchType}
                                         </span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1 font-mono truncate">IF {getConditionSummary(rule)}</p>
-                                    <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-border/40">
-                                        <ArrowRight className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                                        <span className="text-xs font-semibold text-foreground truncate">{rule.actions.ledger}</span>
+
+                                    {/* Line 2: Condition & Target Ledger Action */}
+                                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 font-mono truncate">
+                                        <span className="truncate">IF {getConditionSummary(rule)}</span>
+                                        <ArrowRight className="h-3 w-3 text-primary flex-shrink-0" />
+                                        <span className="font-semibold text-foreground truncate">{rule.actions.ledger}</span>
                                         {rule.actions.contactId && (
-                                            <span className="text-xs text-muted-foreground truncate">
+                                            <span className="text-muted-foreground/80 truncate">
                                                 • {[...customers, ...vendors].find((c: any) => c.Id === rule.actions.contactId)?.DisplayName || 'Contact'}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <Switch checked={rule.is_active !== false} onCheckedChange={() => handleToggleActive(rule)} className="data-[state=checked]:bg-primary scale-90" />
+
+                                {/* Right Controls */}
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <Switch checked={rule.is_active !== false} onCheckedChange={() => handleToggleActive(rule)} className="data-[state=checked]:bg-primary scale-75" />
                                     <div className="relative">
-                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-foreground rounded"
                                             onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === rule.id ? null : rule.id); }}>
-                                            <MoreVertical className="h-3.5 w-3.5" />
+                                            <MoreVertical className="h-3 w-3" />
                                         </Button>
                                         {openMenuId === rule.id && (
-                                            <div className="absolute right-0 top-8 z-50 bg-card border border-border rounded-xl shadow-xl py-1 w-40">
-                                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent rounded-md mx-1 w-[calc(100%-8px)]"
+                                            <div className="absolute right-0 top-7 z-50 bg-card border border-border rounded-lg shadow-xl py-1 w-36">
+                                                <button className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs text-foreground hover:bg-accent rounded mx-1 w-[calc(100%-8px)]"
                                                     onClick={() => startEdit(rule)}>
-                                                    <Pencil className="h-3.5 w-3.5" /> Edit Rule
+                                                    <Pencil className="h-3 w-3" /> Edit Rule
                                                 </button>
-                                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent rounded-md mx-1 w-[calc(100%-8px)]"
+                                                <button className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs text-foreground hover:bg-accent rounded mx-1 w-[calc(100%-8px)]"
                                                     onClick={() => handleDuplicate(rule)}>
-                                                    <Copy className="h-3.5 w-3.5" /> Duplicate
+                                                    <Copy className="h-3 w-3" /> Duplicate
                                                 </button>
                                                 <div className="border-t border-border my-1" />
-                                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 rounded-md mx-1 w-[calc(100%-8px)]"
+                                                <button className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs text-destructive hover:bg-destructive/10 rounded mx-1 w-[calc(100%-8px)]"
                                                     onClick={() => { void deleteRule(rule.id); setOpenMenuId(null); }}>
-                                                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                                                    <Trash2 className="h-3 w-3" /> Delete
                                                 </button>
                                             </div>
                                         )}

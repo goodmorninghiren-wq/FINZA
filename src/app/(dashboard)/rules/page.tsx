@@ -50,24 +50,24 @@ export default function RulesPage() {
     };
 
     return (
-        <div className="space-y-5 h-[calc(100vh-80px)] flex flex-col">
-            {/* Page Header */}
-            <div className="flex justify-between items-start flex-shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground gradient-text">Rules Engine</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">
+        <div className="space-y-2.5 h-[calc(100vh-68px)] flex flex-col overflow-hidden">
+            {/* Page Header — Compact */}
+            <div className="flex justify-between items-center flex-shrink-0 pt-1">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-xl font-bold text-foreground gradient-text leading-none">Rules Engine</h1>
+                    <span className="text-xs text-muted-foreground hidden sm:inline border-l border-border pl-3">
                         Automate bank transaction mapping to QuickBooks Online accounts
-                    </p>
+                    </span>
                 </div>
                 {selectedCompany?.name && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground">
+                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground">
                         <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         {selectedCompany.name}
                     </div>
                 )}
             </div>
 
-            {/* Tab Bar */}
+            {/* Tab Bar — Compact */}
             <div className="flex items-center gap-1 border-b border-border flex-shrink-0">
                 {[
                     { id: 'rules', label: 'Automation Rules', icon: SlidersHorizontal },
@@ -76,15 +76,15 @@ export default function RulesPage() {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as 'rules' | 'sync-log')}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${activeTab === tab.id
-                            ? 'border-primary text-primary'
+                        className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium transition-all border-b-2 -mb-px ${activeTab === tab.id
+                            ? 'border-primary text-primary font-semibold'
                             : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                             }`}
                     >
-                        <tab.icon className="h-4 w-4" />
+                        <tab.icon className="h-3.5 w-3.5" />
                         {tab.label}
                         {tab.id === 'sync-log' && syncLog.length > 0 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20">
                                 {syncLog.length}
                             </span>
                         )}
@@ -92,8 +92,8 @@ export default function RulesPage() {
                 ))}
             </div>
 
-            {/* Tab Content */}
-            <div className="flex-1 min-h-0 overflow-auto">
+            {/* Tab Content — Maximize Height */}
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 {activeTab === 'rules' && (
                     <RulesPanel />
                 )}
