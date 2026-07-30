@@ -503,7 +503,6 @@ export function RulesPanel() {
     };
 
     return (
-    return (
         <div className="flex flex-col h-full gap-2 min-h-0 overflow-hidden">
 
             {/* ── Compact Frozen Top Bar (Stats + QBO Sync Controls) ───── */}
