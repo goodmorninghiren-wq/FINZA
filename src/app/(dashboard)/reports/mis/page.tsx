@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, RefreshCw, Mail, TrendingUp, TrendingDown, Minus, ArrowUpRight } from "lucide-react";
+import { Download, Loader2, RefreshCw, Mail, TrendingUp, TrendingDown, Minus, ArrowUpRight, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import dynamic from "next/dynamic";
 import { ReportHeader } from "@/components/reports/ReportHeader";
 import { FinancialTable } from "@/components/reports/FinancialTable";
@@ -115,6 +116,7 @@ export default function MISReportsPage() {
     const [exporting, setExporting] = useState(false);
 
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [presetFilter, setPresetFilter] = useState<string>("last_month");
     const [companyName, setCompanyName] = useState<string>("Company");
     const [companyId, setCompanyId] = useState<string>("");
 
@@ -127,16 +129,58 @@ export default function MISReportsPage() {
     const [emailBody, setEmailBody] = useState("");
     const [sendingEmail, setSendingEmail] = useState(false);
 
+    // Preset Date Calculation Helper
+    const applyDatePreset = (preset: string) => {
+        setPresetFilter(preset);
+        if (preset === 'custom') return;
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+
+        const formatDateStr = (d: Date) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+
+        let start = '';
+        let end = '';
+
+        if (preset === "last_month") {
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            start = formatDateStr(firstDay);
+            end = formatDateStr(lastDay);
+        } else if (preset === "current_month") {
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            start = formatDateStr(firstDay);
+            end = formatDateStr(lastDay);
+        } else if (preset === "last_year") {
+            const firstDay = new Date(year - 1, 0, 1);
+            const lastDay = new Date(year - 1, 11, 31);
+            start = formatDateStr(firstDay);
+            end = formatDateStr(lastDay);
+        } else if (preset === "current_year") {
+            const firstDay = new Date(year, 0, 1);
+            const lastDay = new Date(year, 11, 31);
+            start = formatDateStr(firstDay);
+            end = formatDateStr(lastDay);
+        } else if (preset === "all") {
+            start = '2000-01-01';
+            end = formatDateStr(now);
+        }
+
+        if (start && end) {
+            setDateRange({ start, end });
+        }
+    };
+
     // Initialize with Last Month
     useEffect(() => {
-        const now = new Date();
-        const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-
-        setDateRange({
-            start: firstDayPrevMonth.toISOString().split('T')[0],
-            end: lastDayPrevMonth.toISOString().split('T')[0]
-        });
+        applyDatePreset("last_month");
 
         // Fetch company info for PDF
         fetch("/api/qbo/company-info")
@@ -188,7 +232,7 @@ export default function MISReportsPage() {
         if (dateRange.start && dateRange.end) {
             const handler = setTimeout(() => {
                 fetchReports();
-            }, 3000);
+            }, 400);
 
             return () => {
                 clearTimeout(handler);
@@ -902,12 +946,30 @@ export default function MISReportsPage() {
 
                 {/* Controls */}
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Date Range */}
+                    {/* Date Preset Dropdown */}
+                    <div className="flex items-center gap-2">
+                        <span style={{ fontSize: "12px", color: TEXT_MUTED, fontWeight: 500 }}>Period</span>
+                        <Select value={presetFilter} onValueChange={(val) => applyDatePreset(val)}>
+                            <SelectTrigger className="w-[145px] h-8 text-xs bg-card border-border">
+                                <SelectValue placeholder="Select Period" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="last_month">Last Month</SelectItem>
+                                <SelectItem value="current_month">Current Month</SelectItem>
+                                <SelectItem value="last_year">Last Year</SelectItem>
+                                <SelectItem value="current_year">Current Year</SelectItem>
+                                <SelectItem value="all">All Time</SelectItem>
+                                <SelectItem value="custom">Custom Date</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Date Range Inputs */}
                     <div className="flex items-center gap-2">
                         <span style={{ fontSize: "12px", color: TEXT_MUTED, fontWeight: 500 }}>From</span>
                         <input
                             type="date"
-                            className="rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2"
+                            className="rounded-lg px-2.5 py-1 text-sm focus:outline-none focus:ring-2"
                             style={{
                                 border: `1px solid ${BORDER}`,
                                 background: BG_SOFT,
@@ -915,12 +977,15 @@ export default function MISReportsPage() {
                                 fontSize: "13px",
                             }}
                             value={dateRange.start}
-                            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                            onChange={(e) => {
+                                setPresetFilter("custom");
+                                setDateRange(prev => ({ ...prev, start: e.target.value }));
+                            }}
                         />
                         <span style={{ fontSize: "12px", color: TEXT_MUTED, fontWeight: 500 }}>To</span>
                         <input
                             type="date"
-                            className="rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2"
+                            className="rounded-lg px-2.5 py-1 text-sm focus:outline-none focus:ring-2"
                             style={{
                                 border: `1px solid ${BORDER}`,
                                 background: BG_SOFT,
@@ -928,7 +993,10 @@ export default function MISReportsPage() {
                                 fontSize: "13px",
                             }}
                             value={dateRange.end}
-                            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                            onChange={(e) => {
+                                setPresetFilter("custom");
+                                setDateRange(prev => ({ ...prev, end: e.target.value }));
+                            }}
                         />
                     </div>
 
