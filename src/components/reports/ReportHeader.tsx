@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, Calendar, Clock } from "lucide-react";
+import { Building2, Calendar, Clock, Shield } from "lucide-react";
 
 interface ReportHeaderProps {
     dateRange: { start: string; end: string };
@@ -23,49 +23,117 @@ export function ReportHeader({ dateRange }: ReportHeaderProps) {
     }, []);
 
     const formatDate = (dateStr: string) => {
-        if (!dateStr) return "";
+        if (!dateStr) return "—";
         const date = new Date(dateStr);
         return date.toLocaleDateString("en-US", {
             year: "numeric",
             month: "long",
-            day: "numeric"
+            day: "numeric",
         });
     };
 
     return (
-        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-gradient-to-br from-purple-600/20 via-blue-600/20 to-pink-600/20 p-8 mb-6">
-            {/* Animated background gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-pink-600/10 animate-gradient-x"></div>
+        <div className="rounded-xl overflow-hidden border border-border bg-card shadow-sm mb-2">
+            {/* Top navy accent bar */}
+            <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #1E3A5F 0%, #2E86AB 50%, #1E3A5F 100%)" }} />
 
-            <div className="relative z-10">
-                {/* Company Name */}
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 rounded-lg bg-white/10 backdrop-blur-sm">
-                        <Building2 className="h-8 w-8 text-primary" />
+            <div className="px-8 py-6">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+
+                    {/* Left: Company identity */}
+                    <div className="flex items-start gap-4">
+                        {/* Company icon block */}
+                        <div
+                            className="flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-xl"
+                            style={{ background: "#1E3A5F" }}
+                        >
+                            <Building2 className="h-7 w-7 text-white" />
+                        </div>
+
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1E3A5F" }}>
+                                    {companyName}
+                                </h1>
+                                {/* Confidential badge */}
+                                <span
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-widest border"
+                                    style={{
+                                        color: "#6B7280",
+                                        borderColor: "#D1D5DB",
+                                        backgroundColor: "#F9FAFB",
+                                    }}
+                                >
+                                    <Shield className="h-3 w-3" />
+                                    Confidential
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className="inline-block px-3 py-1 rounded-md text-sm font-semibold text-white"
+                                    style={{ background: "#2E86AB" }}
+                                >
+                                    Management Information System Report
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-3xl font-bold text-foreground gradient-text">
-                            {companyName}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">Management Information System Report</p>
+
+                    {/* Right: Metadata */}
+                    <div
+                        className="flex flex-col gap-3 md:items-end text-sm"
+                        style={{ color: "#374151" }}
+                    >
+                        <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 flex-shrink-0" style={{ color: "#2E86AB" }} />
+                            <div className="text-right">
+                                <span className="text-xs uppercase tracking-widest font-medium" style={{ color: "#9CA3AF" }}>
+                                    Reporting Period
+                                </span>
+                                <p className="font-semibold" style={{ color: "#111827" }}>
+                                    {formatDate(dateRange.start)}
+                                    {dateRange.start && dateRange.end && (
+                                        <span style={{ color: "#6B7280" }}> — </span>
+                                    )}
+                                    {formatDate(dateRange.end)}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 flex-shrink-0" style={{ color: "#2E86AB" }} />
+                            <div className="text-right">
+                                <span className="text-xs uppercase tracking-widest font-medium" style={{ color: "#9CA3AF" }}>
+                                    Generated On
+                                </span>
+                                <p className="font-semibold" style={{ color: "#111827" }}>
+                                    {generatedTime}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* Report Metadata */}
-                <div className="flex flex-wrap gap-6 mt-6 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
+                {/* Bottom divider with metadata strip */}
+                <div
+                    className="mt-5 pt-4 flex items-center justify-between flex-wrap gap-2"
+                    style={{ borderTop: "1px solid #E5E7EB" }}
+                >
+                    <div className="flex items-center gap-6 text-xs" style={{ color: "#6B7280" }}>
                         <span>
-                            Period: <span className="text-foreground font-semibold">
-                                {formatDate(dateRange.start)} - {formatDate(dateRange.end)}
-                            </span>
+                            <span className="font-semibold uppercase tracking-wider">Report Type:</span>{" "}
+                            Profit & Loss Analysis
+                        </span>
+                        <span>
+                            <span className="font-semibold uppercase tracking-wider">Prepared By:</span>{" "}
+                            RISE360 Automation Reporting Engine
                         </span>
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        <span>
-                            Generated: <span className="text-foreground font-semibold">{generatedTime}</span>
-                        </span>
+                    <div
+                        className="text-xs font-semibold uppercase tracking-widest"
+                        style={{ color: "#1E3A5F" }}
+                    >
+                        RISE360 · ENTERPRISE REPORTS
                     </div>
                 </div>
             </div>

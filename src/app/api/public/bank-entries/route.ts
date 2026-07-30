@@ -3,10 +3,10 @@ import { createClient } from '@/utils/supabase/server';
 import { verifyApiKey } from '@/lib/api-auth';
 
 /**
- * Public API for 3rd parties to push bank transactions directly into Finza.
+ * Public API for 3rd parties to push bank transactions directly into RISE360 Automation.
  * 
  * Header Required:
- * x-api-key: finza_live_xxxx
+ * x-api-key: rise360_live_xxxx
  * 
  * JSON Body:
  * {
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
             success: true,
             receivedCount: transactions.length,
             insertedCount: insertedData.length,
-            message: `Successfully swallowed ${insertedData.length} transactions into Finza.`
+            message: `Successfully swallowed ${insertedData.length} transactions into RISE360 Automation.`
         });
 
     } catch (error: any) {

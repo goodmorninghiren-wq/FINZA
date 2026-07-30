@@ -7,7 +7,7 @@ import { verifyApiKey } from '@/lib/api-auth';
  * Public API for 3rd parties to pull Debtors (Aged Receivables) data.
  * 
  * Header Required:
- * x-api-key: finza_live_xxxx
+ * x-api-key: rise360_live_xxxx
  * 
  * Query Parameters:
  * ?date=YYYY-MM-DD (Optional, defaults to today)

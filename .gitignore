@@ -51,5 +51,6 @@ next-env.d.ts
 # Local test artifacts
 scripts/test_upload.pdf
 scripts/logs/
+scratch/
 *.zip
 *.bak

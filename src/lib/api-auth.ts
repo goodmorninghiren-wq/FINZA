@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 
 /**
  * Verifies an incoming request's API key.
- * Expected header: x-api-key: finza_live_xxxx
+ * Expected header: x-api-key: rise360_live_xxxx
  * 
  * Returns the company_id if valid, otherwise throws an error.
  */

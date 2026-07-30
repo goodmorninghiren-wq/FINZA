@@ -103,7 +103,7 @@ export default function SettingsPage() {
                                 id="firmName"
                                 value={firmName}
                                 onChange={(e) => setFirmName(e.target.value)}
-                                placeholder="e.g. Finza AI"
+                                placeholder="e.g. RISE360 Automation"
                                 className="bg-black/20 border-white/10 text-foreground h-11 focus:ring-primary/20"
                             />
                         </div>

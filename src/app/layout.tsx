@@ -17,11 +17,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Finza — QuickBooks Automation for Accounting Firms",
-    template: "%s | Finza",
+    default: "RISE360 Automation — QuickBooks Automation for Accounting Firms",
+    template: "%s | RISE360 Automation",
   },
   description:
-    "Finza helps CA and accounting firms automate QuickBooks Online bank entries, rules-based categorization, and bulk posting.",
+    "RISE360 Automation helps CA and accounting firms automate QuickBooks Online bank entries, rules-based categorization, and bulk posting.",
   metadataBase: process.env.NEXT_PUBLIC_SITE_URL
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
     : undefined,

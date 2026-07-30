@@ -12,7 +12,7 @@ export async function POST(request: Request) {
         const testRes = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'test', source: 'finza' }),
+            body: JSON.stringify({ type: 'test', source: 'rise360' }),
             signal: AbortSignal.timeout(8000)
         });
 

@@ -209,14 +209,14 @@ export function Header() {
     };
 
     return (
-        <header className="h-16 border-b border-white/10 glass flex items-center justify-between px-6 sticky top-0 z-10 relative">
+        <header className="h-16 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-10 relative">
             {/* Gradient border bottom */}
             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
 
             {/* Left: Branding & QBO Connection */}
             <div className="flex items-center gap-4">
                 <div className="flex flex-col animate-fade-in">
-                    <h1 className="text-lg font-bold gradient-text tracking-tight">Finza</h1>
+                    <h1 className="text-lg font-bold gradient-text tracking-tight">RISE360 Automation</h1>
                 </div>
 
                 {/* Company Selector */}
@@ -225,10 +225,10 @@ export function Header() {
                         const company = connectedCompanies.find(c => c.id === val);
                         if (company) setCompany(company);
                     }}>
-                        <SelectTrigger className="min-w-[220px] max-w-[400px] h-9 text-sm bg-white/5 border-white/10 focus:ring-primary/20 transition-all hover:bg-white/10">
+                        <SelectTrigger className="min-w-[220px] max-w-[400px] h-9 text-sm bg-muted/40 border-border text-foreground focus:ring-primary/20 transition-all hover:bg-accent">
                             <SelectValue placeholder="Select Company" />
                         </SelectTrigger>
-                        <SelectContent className="glass-strong border-white/10 min-w-[220px]">
+                        <SelectContent className="bg-popover border-border text-popover-foreground shadow-lg min-w-[220px]">
                             {connectedCompanies.map(company => (
                                 <SelectItem
                                     key={company.id}

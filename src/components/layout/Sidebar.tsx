@@ -43,7 +43,7 @@ export function Sidebar() {
     return (
         <div
             className={cn(
-                "h-screen glass-strong text-foreground transition-all duration-300 flex flex-col border-r border-white/10 relative",
+                "h-screen bg-card text-foreground transition-all duration-300 flex flex-col border-r border-border relative shadow-sm",
                 sidebarOpen ? "w-64" : "w-16"
             )}
         >
@@ -51,10 +51,10 @@ export function Sidebar() {
             <div className="absolute top-0 right-0 w-[2px] h-full bg-gradient-to-b from-primary via-accent to-transparent opacity-50" />
 
             {/* Sidebar Header */}
-            <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
+            <div className="h-16 flex items-center justify-between px-4 border-b border-border">
                 {sidebarOpen && (
                     <span className="font-bold text-xl tracking-wide gradient-text animate-fade-in">
-                        Finza
+                        RISE360
                     </span>
                 )}
                 <Button

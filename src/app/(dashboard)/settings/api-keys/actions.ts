@@ -28,12 +28,12 @@ export async function generateApiKey(companyId: string, name: string) {
 
     if (!userAuth?.user) throw new Error("Unauthorized");
 
-    // Generate a secure random token (e.g., finza_live_xxxxx)
+    // Generate a secure random token (e.g., rise360_live_xxxxx)
     const randomString = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID().replace(/-/g, '')
         : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-    const token = `finza_live_${randomString}`;
+    const token = `rise360_live_${randomString}`;
 
     const { data, error } = await supabase
         .from("api_keys")

@@ -22,12 +22,36 @@ const OPERATORS_BY_FIELD: Record<ConditionField, { label: string; value: Conditi
         { label: 'Ends with', value: 'ends_with' },
         { label: 'Equals', value: 'equals' },
     ],
+    'Payee': [
+        { label: 'Contains', value: 'contains' },
+        { label: 'Does not contain', value: 'not_contains' },
+        { label: 'Starts with', value: 'starts_with' },
+        { label: 'Ends with', value: 'ends_with' },
+        { label: 'Equals', value: 'equals' },
+    ],
+    'Vendor': [
+        { label: 'Contains', value: 'contains' },
+        { label: 'Does not contain', value: 'not_contains' },
+        { label: 'Starts with', value: 'starts_with' },
+        { label: 'Ends with', value: 'ends_with' },
+        { label: 'Equals', value: 'equals' },
+    ],
     'Amount': [
         { label: 'Greater than', value: 'gt' },
         { label: 'Less than', value: 'lt' },
         { label: 'Equal to', value: 'eq' },
         { label: 'Greater than or equal', value: 'gte' },
         { label: 'Less than or equal', value: 'lte' },
+        { label: 'Equals', value: 'equals' },
+    ],
+    'Type': [
+        { label: 'Equals', value: 'equals' },
+        { label: 'Contains', value: 'contains' },
+        { label: 'Starts with', value: 'starts_with' },
+    ],
+    'Reference': [
+        { label: 'Contains', value: 'contains' },
+        { label: 'Starts with', value: 'starts_with' },
         { label: 'Equals', value: 'equals' },
     ]
 };
@@ -66,14 +90,14 @@ export function RuleBuilder({ conditions, matchType, onChange }: RuleBuilderProp
     };
 
     return (
-        <div className="space-y-4 border rounded-md p-3 bg-slate-50">
+        <div className="space-y-4 border border-border rounded-xl p-3.5 bg-muted/20">
             <div className="flex items-center space-x-2 mb-2">
-                <span className="text-sm font-medium text-slate-700">When</span>
+                <span className="text-xs font-semibold text-foreground">When</span>
                 <Select
                     value={matchType}
                     onValueChange={(val: 'AND' | 'OR') => onChange(conditions, val)}
                 >
-                    <SelectTrigger className="w-[100px] h-8 bg-white">
+                    <SelectTrigger className="w-[100px] h-8 text-xs bg-background border-input text-foreground">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -81,23 +105,27 @@ export function RuleBuilder({ conditions, matchType, onChange }: RuleBuilderProp
                         <SelectItem value="OR">ANY</SelectItem>
                     </SelectContent>
                 </Select>
-                <span className="text-sm font-medium text-slate-700">conditions match:</span>
+                <span className="text-xs font-semibold text-foreground">conditions match:</span>
             </div>
 
             <div className="space-y-2">
-                {conditions.map((condition, index) => (
+                {conditions.map((condition) => (
                     <div key={condition.id} className="flex items-center gap-2 group">
                         {/* Field Selector */}
                         <Select
                             value={condition.field}
                             onValueChange={(val: ConditionField) => updateCondition(condition.id, { field: val })}
                         >
-                            <SelectTrigger className="w-[130px] h-8 bg-white">
+                            <SelectTrigger className="w-[140px] h-8 text-xs bg-background border-input text-foreground font-medium">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Description">Description</SelectItem>
+                                <SelectItem value="Payee">Payee / Name</SelectItem>
+                                <SelectItem value="Vendor">Vendor</SelectItem>
                                 <SelectItem value="Amount">Amount</SelectItem>
+                                <SelectItem value="Type">Type</SelectItem>
+                                <SelectItem value="Reference">Ref / Check No</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -106,7 +134,7 @@ export function RuleBuilder({ conditions, matchType, onChange }: RuleBuilderProp
                             value={condition.operator}
                             onValueChange={(val: ConditionOperator) => updateCondition(condition.id, { operator: val })}
                         >
-                            <SelectTrigger className="w-[160px] h-8 bg-white">
+                            <SelectTrigger className="w-[160px] h-8 text-xs bg-background border-input text-foreground">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -118,7 +146,7 @@ export function RuleBuilder({ conditions, matchType, onChange }: RuleBuilderProp
 
                         {/* Value Input */}
                         <Input
-                            className="flex-1 h-8 bg-white"
+                            className="flex-1 h-8 text-xs bg-background border-input text-foreground"
                             value={condition.value}
                             onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
                             placeholder={condition.field === 'Amount' ? '0.00' : 'Value...'}
@@ -129,7 +157,7 @@ export function RuleBuilder({ conditions, matchType, onChange }: RuleBuilderProp
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-80 group-hover:opacity-100 transition-opacity"
                             onClick={() => removeCondition(condition.id)}
                             disabled={conditions.length === 1}
                         >
@@ -139,7 +167,7 @@ export function RuleBuilder({ conditions, matchType, onChange }: RuleBuilderProp
                 ))}
             </div>
 
-            <Button size="sm" variant="outline" onClick={addCondition} className="w-full text-xs h-8 border-dashed">
+            <Button size="sm" variant="outline" onClick={addCondition} className="w-full text-xs h-8 border-dashed border-border hover:bg-accent hover:text-accent-foreground">
                 <Plus className="h-3 w-3 mr-1" /> Add Condition
             </Button>
         </div>

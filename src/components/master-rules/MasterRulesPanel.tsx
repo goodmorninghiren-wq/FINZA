@@ -317,32 +317,32 @@ export function MasterRulesPanel() {
                 )}
 
                 {/* List Rules */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                     {masterRules.map(rule => (
-                        <div key={rule.id} className="group border border-white/10 rounded-md p-3 hover:bg-white/5 transition-colors bg-black/20">
+                        <div key={rule.id} className="group border border-border rounded-xl p-3.5 transition-all duration-200 bg-card hover:bg-accent/40 shadow-sm hover:shadow-md hover:border-primary/30">
                             <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-sm font-medium text-foreground">{rule.rule_name}</span>
+                                        <span className="text-sm font-semibold text-foreground">{rule.rule_name}</span>
                                         {rule.rule_type && (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground border border-white/10">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                                                 {rule.rule_type}
                                             </span>
                                         )}
-                                        <Badge variant="secondary" className="text-[10px] h-5 bg-white/10 text-muted-foreground border-white/10">
+                                        <Badge variant="secondary" className="text-[10px] h-5 bg-muted text-muted-foreground border-border">
                                             {rule.appliedClientIds.length} Clients
                                         </Badge>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        <span className={`inline-block px-1 rounded mr-1 ${rule.matchType === 'OR' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                        <span className={`inline-block text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider ${rule.matchType === 'OR' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30' : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'}`}>
                                             {rule.matchType}
                                         </span>
-                                        {getConditionSummary(rule)}
+                                        <span className="font-mono text-xs">{getConditionSummary(rule)}</span>
                                     </p>
 
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                        <p className="text-xs font-medium text-foreground">
+                                    <div className="flex items-center gap-2 mt-2 pt-1 border-t border-border/40 text-xs">
+                                        <ArrowRight className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                        <p className="text-xs font-semibold text-foreground">
                                             {rule.actions.ledger}
                                         </p>
                                         {rule.actions.contactId && (

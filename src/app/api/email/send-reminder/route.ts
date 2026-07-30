@@ -26,7 +26,7 @@ export async function POST(request: Request) {
         });
 
         await transporter.sendMail({
-            from: `"${process.env.EMAIL_FROM_NAME || 'Finza Reporting'}" <${user}>`,
+            from: `"${process.env.EMAIL_FROM_NAME || 'RISE360 Automation Reporting'}" <${user}>`,
             to,
             subject: subject || 'Payment Reminder',
             text: body || 'This is a payment reminder for your outstanding balance. Please arrange payment at your earliest convenience.',

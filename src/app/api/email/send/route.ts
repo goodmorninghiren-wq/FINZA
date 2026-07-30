@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
         // Send Email
         await transporter.sendMail({
-            from: `"${process.env.EMAIL_FROM_NAME || 'Finza Reporting'}" <${user}>`,
+            from: `"${process.env.EMAIL_FROM_NAME || 'RISE360 Automation Reporting'}" <${user}>`,
             to: to,
             subject: subject || 'MIS Report',
             text: body || 'Please find the attached report.',

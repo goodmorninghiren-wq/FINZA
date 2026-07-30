@@ -95,7 +95,7 @@ export default function ApiKeysPage() {
                         <Key className="h-6 w-6 text-primary" />
                         API Integrations
                     </h1>
-                    <p className="text-muted-foreground">Manage API keys to let external software connect to Finza securely.</p>
+                    <p className="text-muted-foreground">Manage API keys to let external software connect to RISE360 Automation securely.</p>
                 </div>
             </div>
 
@@ -104,7 +104,7 @@ export default function ApiKeysPage() {
                 <CardHeader>
                     <CardTitle className="text-lg">Generate New API Key</CardTitle>
                     <CardDescription>
-                        Tokens provide full read/write access to this company's Finza account and QBO connection via Finza's public API. Treat them like passwords.
+                        Tokens provide full read/write access to this company's RISE360 Automation account and QBO connection via RISE360 Automation's public API. Treat them like passwords.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -175,7 +175,7 @@ export default function ApiKeysPage() {
                                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                                         <span>Created: {new Date(key.created_at).toLocaleDateString()}</span>
                                         <span>Last Used: {key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Never'}</span>
-                                        <span className="font-mono">Token: finza_live_••••••••</span>
+                                        <span className="font-mono">Token: rise360_live_••••••••</span>
                                     </div>
                                 </div>
 

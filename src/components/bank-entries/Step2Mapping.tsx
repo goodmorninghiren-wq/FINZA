@@ -2,15 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { useStore } from "@/store/useStore";
 
 interface Step2Props {
@@ -18,6 +11,86 @@ interface Step2Props {
     onBack: () => void;
     data: any[];
     setData: (data: any[]) => void;
+}
+
+// ── Smart Rule Mapping Resolver ────────────────────────────────────────────────
+function resolveRuleMapping(row: any, accList: any[], venList: any[], cusList: any[]) {
+    let updatedRow = { ...row };
+
+    // 1. Transaction Type
+    if (row.suggested_type) {
+        updatedRow.transaction_type = row.suggested_type;
+    }
+
+    const type = updatedRow.transaction_type || 'Expense';
+    const isIncome = ["Income", "Credit Note"].includes(type);
+
+    // 2. Account / Ledger Resolution
+    if (row.suggested_ledger) {
+        const suggested = row.suggested_ledger.toString().trim().toLowerCase();
+
+        // Exact match by Name or ID
+        let acc = accList.find((a: any) =>
+            a.Name?.toString().trim().toLowerCase() === suggested ||
+            a.Id?.toString() === suggested
+        );
+
+        // Partial match
+        if (!acc) {
+            acc = accList.find((a: any) => {
+                const name = a.Name?.toString().trim().toLowerCase() || "";
+                return name.includes(suggested) || suggested.includes(name);
+            });
+        }
+
+        // Keyword fallback matching (e.g., 'software', 'travel', 'meals', 'office', 'sales', 'rent')
+        if (!acc) {
+            const keywords = suggested.split(/[\s&/_-]+/);
+            acc = accList.find((a: any) => {
+                const name = a.Name?.toString().trim().toLowerCase() || "";
+                return keywords.some((kw: string) => kw.length > 3 && name.includes(kw));
+            });
+        }
+
+        if (acc) {
+            updatedRow.qbo_account_id = acc.Id;
+        } else {
+            // Set suggested string directly so fallback option auto-selects it
+            updatedRow.qbo_account_id = row.suggested_ledger;
+        }
+    }
+
+    // 3. Contact / Payee Resolution
+    if (row.suggested_contact_id) {
+        const contactVal = row.suggested_contact_id.toString().trim().toLowerCase();
+        const contactList = isIncome ? cusList : venList;
+
+        // ID, DisplayName or CompanyName match
+        let contact = contactList.find((c: any) =>
+            c.Id?.toString() === contactVal ||
+            c.DisplayName?.toString().trim().toLowerCase() === contactVal ||
+            c.CompanyName?.toString().trim().toLowerCase() === contactVal
+        );
+
+        // Partial match
+        if (!contact) {
+            contact = contactList.find((c: any) => {
+                const name = c.DisplayName?.toString().trim().toLowerCase() || "";
+                return name.includes(contactVal) || contactVal.includes(name);
+            });
+        }
+
+        if (contact) {
+            if (isIncome) updatedRow.qbo_customer_id = contact.Id;
+            else updatedRow.qbo_vendor_id = contact.Id;
+        } else {
+            // Set suggested contact string directly so fallback option auto-selects it
+            if (isIncome) updatedRow.qbo_customer_id = row.suggested_contact_id;
+            else updatedRow.qbo_vendor_id = row.suggested_contact_id;
+        }
+    }
+
+    return updatedRow;
 }
 
 export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
@@ -40,38 +113,9 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
             if (res.ok) {
                 const { transactions: mappedData, applied } = await res.json();
                 if (applied) {
-                    const finalData = mappedData.map((row: any) => {
-                        let updatedRow = { ...row };
-
-                        // Apply transaction type from rule
-                        if (row.suggested_type) {
-                            updatedRow.transaction_type = row.suggested_type;
-                        }
-
-                        // Apply account/ledger from rule
-                        if (row.suggested_ledger) {
-                            const suggested = row.suggested_ledger.toString().trim().toLowerCase();
-                            const acc = accounts.find(a => a.Name.toString().trim().toLowerCase() === suggested);
-                            if (acc) {
-                                updatedRow.qbo_account_id = acc.Id;
-                            } else {
-                                console.warn(`[ApplyRules] Ledger "${row.suggested_ledger}" not found in accounts list.`);
-                            }
-                        }
-
-                        // Apply contact/payee from rule
-                        if (row.suggested_contact_id) {
-                            const contactId = row.suggested_contact_id.toString();
-                            const isCustType = ["Income", "Credit Note"].includes(updatedRow.transaction_type);
-                            if (isCustType) {
-                                updatedRow.qbo_customer_id = contactId;
-                            } else {
-                                updatedRow.qbo_vendor_id = contactId;
-                            }
-                        }
-
-                        return updatedRow;
-                    });
+                    const finalData = mappedData.map((row: any) =>
+                        resolveRuleMapping(row, accounts, vendors, customers)
+                    );
                     setData(finalData);
                 }
             }
@@ -107,12 +151,12 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
         };
 
         fetchData();
-    }, []);
+    }, [selectedCompany.id]);
 
     // Rule Application on Load
     useEffect(() => {
         const initAndApply = async () => {
-            if (!isLoading && data.length > 0 && !hasAppliedRules.current && accounts.length > 0) {
+            if (!isLoading && data.length > 0 && !hasAppliedRules.current) {
                 hasAppliedRules.current = true;
 
                 // Prepare data if missing transaction_type
@@ -139,38 +183,9 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
 
                     if (res.ok) {
                         const { transactions: mappedData } = await res.json();
-                        const finalData = mappedData.map((row: any) => {
-                            let updatedRow = { ...row };
-
-                            // Apply transaction type from rule
-                            if (row.suggested_type) {
-                                updatedRow.transaction_type = row.suggested_type;
-                            }
-
-                            // Apply account/ledger from rule
-                            if (row.suggested_ledger) {
-                                const suggested = row.suggested_ledger.toString().trim().toLowerCase();
-                                const acc = accounts.find((a: any) => a.Name.toString().trim().toLowerCase() === suggested);
-                                if (acc) {
-                                    updatedRow.qbo_account_id = acc.Id;
-                                } else {
-                                    console.warn(`[InitApplyRules] Ledger "${row.suggested_ledger}" not found in accounts list.`);
-                                }
-                            }
-
-                            // Apply contact/payee from rule
-                            if (row.suggested_contact_id) {
-                                const contactId = row.suggested_contact_id.toString();
-                                const isCustType = ["Income", "Credit Note"].includes(updatedRow.transaction_type);
-                                if (isCustType) {
-                                    updatedRow.qbo_customer_id = contactId;
-                                } else {
-                                    updatedRow.qbo_vendor_id = contactId;
-                                }
-                            }
-
-                            return updatedRow;
-                        });
+                        const finalData = mappedData.map((row: any) =>
+                            resolveRuleMapping(row, accounts, vendors, customers)
+                        );
                         setData(finalData);
                     } else {
                         setData(initializedData);
@@ -183,7 +198,7 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
         };
 
         initAndApply();
-    }, [isLoading, data, accounts, selectedCompany.id, setData]);
+    }, [isLoading, data, accounts, vendors, customers, selectedCompany.id, setData]);
 
     const updateRow = (index: number, field: string, value: string | number) => {
         const newData = [...data];
@@ -192,41 +207,41 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
     };
 
     if (isLoading) {
-        return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-blue-600" /></div>;
+        return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>;
     }
 
     return (
         <div className="space-y-6">
             <h2 className="text-xl font-bold text-foreground">Step 2: Review & Map Transactions</h2>
-            <div className="flex justify-between items-center bg-blue-500/10 p-4 rounded-md text-blue-400 border border-blue-500/20">
-                <span>Found {data.length} transactions. Map them to QBO Accounts, Vendors, or Customers.</span>
+            <div className="flex justify-between items-center bg-primary/10 p-4 rounded-xl text-primary border border-primary/20">
+                <span className="text-sm font-medium">Found {data.length} transactions. Map them to QBO Accounts, Vendors, or Customers.</span>
                 <Button
                     size="sm"
                     variant="outline"
                     onClick={() => void applyRules(data)}
                     disabled={isApplyingRules}
-                    className="border-blue-500/30 hover:bg-blue-500/20 text-blue-400"
+                    className="border-primary/30 hover:bg-primary/20 text-primary font-semibold"
                 >
-                    {isApplyingRules ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
-                    Apply Rules
+                    {isApplyingRules ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
+                    Re-Apply Rules
                 </Button>
             </div>
 
-            <div className="border rounded-lg overflow-hidden border-white/10 shadow-sm glass">
+            <div className="border rounded-xl overflow-hidden border-border shadow-sm bg-card">
                 <div className="overflow-x-auto max-h-[600px]">
-                    <table className="min-w-full divide-y divide-white/10">
-                        <thead className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
+                    <table className="min-w-full divide-y divide-border">
+                        <thead className="bg-muted/40 sticky top-0 z-10 backdrop-blur-md">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase">Description</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-muted-foreground uppercase">Amount</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase w-[150px]">Type</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase w-[200px]">Account (Ledger)</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase w-[200px]">Contact / Payee</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase">Rule</th>
+                                <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Date</th>
+                                <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</th>
+                                <th className="px-5 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">Amount</th>
+                                <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider w-[150px]">Type</th>
+                                <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider w-[220px]">Account (Ledger)</th>
+                                <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider w-[220px]">Contact / Payee</th>
+                                <th className="px-5 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Rule Matched</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-transparent divide-y divide-white/10">
+                        <tbody className="bg-transparent divide-y divide-border/60">
                             {data.map((row, i) => {
                                 const type = row.transaction_type || 'Expense';
                                 const isTransfer = type === 'Transfer';
@@ -241,24 +256,29 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
                                             ? accounts.filter((a: any) => a.Classification === 'Revenue' || a.AccountType === 'Income' || a.AccountType === 'Other Income')
                                             : accounts.filter((a: any) => a.Classification === 'Expense' || a.AccountType === 'Expense' || a.AccountType === 'Cost of Goods Sold');
 
+                                const selectedContactId = isIncome ? (row.qbo_customer_id || "") : (row.qbo_vendor_id || "");
+                                const contactList = isIncome ? customers : vendors;
+                                const contactExists = contactList.some((c: any) => c.Id?.toString() === selectedContactId?.toString());
+                                const accountExists = accounts.some((a: any) => a.Id?.toString() === row.qbo_account_id?.toString());
+
                                 return (
-                                    <tr key={i} className="hover:bg-white/5 transition-colors">
-                                        <td className="px-6 py-2 whitespace-nowrap text-sm text-foreground">
+                                    <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                        <td className="px-5 py-2.5 whitespace-nowrap text-sm text-foreground font-mono">
                                             {row['Date'] || row['date']}
                                         </td>
-                                        <td className="px-6 py-2 whitespace-nowrap text-sm text-foreground">
+                                        <td className="px-5 py-2.5 whitespace-nowrap text-sm text-foreground">
                                             <Input
                                                 value={row['Description'] || row['description'] || ""}
                                                 onChange={(e) => updateRow(i, row.Description ? 'Description' : 'description', e.target.value)}
-                                                className="h-8 w-full min-w-[200px] bg-black/20 border-white/10 text-foreground"
+                                                className="h-8 w-full min-w-[200px] bg-background border-input text-foreground text-xs"
                                             />
                                         </td>
-                                        <td className="px-6 py-2 whitespace-nowrap text-sm text-foreground text-right font-medium">
+                                        <td className="px-5 py-2.5 whitespace-nowrap text-sm text-foreground text-right font-mono font-semibold">
                                             {row['Amount'] || row['amount']}
                                         </td>
-                                        <td className="px-6 py-2 whitespace-nowrap">
+                                        <td className="px-5 py-2.5 whitespace-nowrap">
                                             <select
-                                                className="h-8 w-full border rounded text-sm p-1 bg-black/20 border-white/10 text-foreground"
+                                                className="h-8 w-full border border-input rounded-lg text-xs p-1 bg-background text-foreground font-medium focus:ring-primary/20"
                                                 value={row.transaction_type || 'Expense'}
                                                 onChange={(e) => updateRow(i, 'transaction_type', e.target.value)}
                                             >
@@ -273,30 +293,48 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
                                                 <option value="Journal Entry">Journal Entry</option>
                                             </select>
                                         </td>
-                                        <td className="px-6 py-2 whitespace-nowrap">
+                                        <td className="px-5 py-2.5 whitespace-nowrap">
                                             <select
-                                                className="h-8 w-full border rounded text-sm p-1 bg-black/20 border-white/10 text-foreground"
+                                                className="h-8 w-full border border-input rounded-lg text-xs p-1 bg-background text-foreground font-medium focus:ring-primary/20"
                                                 value={row.qbo_account_id || ""}
                                                 onChange={(e) => updateRow(i, 'qbo_account_id', e.target.value)}
                                             >
                                                 <option value="">
                                                     {isTransfer ? 'Select Target Bank' : 'Select Account'}
                                                 </option>
+
+                                                {/* Fallback Option for Rule Suggested Ledger */}
+                                                {row.qbo_account_id && !accountExists && (
+                                                    <option value={row.qbo_account_id}>
+                                                        ✨ {row.suggested_ledger || row.qbo_account_id}
+                                                    </option>
+                                                )}
+
                                                 {ledgerOptions.map(acc => (
                                                     <option key={acc.Id} value={acc.Id}>{acc.Name}</option>
                                                 ))}
-                                                {ledgerOptions.length === 0 && <option disabled>No matching accounts found</option>}
+                                                {ledgerOptions.length === 0 && !row.qbo_account_id && (
+                                                    <option disabled>No matching accounts found</option>
+                                                )}
                                             </select>
                                         </td>
-                                        <td className="px-6 py-2 whitespace-nowrap">
+                                        <td className="px-5 py-2.5 whitespace-nowrap">
                                             {(!isTransfer && !isJournal) ? (
                                                 <select
-                                                    className="h-8 w-full border rounded text-sm p-1 bg-black/20 border-white/10 text-foreground"
-                                                    value={isIncome ? (row.qbo_customer_id || "") : (row.qbo_vendor_id || "")}
+                                                    className="h-8 w-full border border-input rounded-lg text-xs p-1 bg-background text-foreground font-medium focus:ring-primary/20"
+                                                    value={selectedContactId}
                                                     onChange={(e) => updateRow(i, isIncome ? 'qbo_customer_id' : 'qbo_vendor_id', e.target.value)}
                                                 >
                                                     <option value="">{isIncome ? 'Select Customer' : 'Select Vendor'}</option>
-                                                    {(isIncome ? customers : vendors).map(c => (
+
+                                                    {/* Fallback Option for Rule Suggested Contact */}
+                                                    {selectedContactId && !contactExists && (
+                                                        <option value={selectedContactId}>
+                                                            ✨ {row.suggested_contact_id || selectedContactId}
+                                                        </option>
+                                                    )}
+
+                                                    {contactList.map(c => (
                                                         <option key={c.Id} value={c.Id}>{c.DisplayName}</option>
                                                     ))}
                                                 </select>
@@ -304,23 +342,32 @@ export function Step2Mapping({ onNext, onBack, data, setData }: Step2Props) {
                                                 <span className="text-xs text-muted-foreground italic">N/A for {type}</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-2 whitespace-nowrap">
-                                            <Badge variant="outline" className="bg-white/10 text-muted-foreground font-normal border-white/10">
-                                                {row.rule_applied || "Manual"}
-                                            </Badge>
+                                        <td className="px-5 py-2.5 whitespace-nowrap">
+                                            {row.rule_applied ? (
+                                                <Badge variant="outline" className="bg-primary/10 text-primary font-semibold border-primary/20 text-xs px-2.5 py-0.5">
+                                                    {row.rule_applied}
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="bg-muted text-muted-foreground font-normal border-border text-xs px-2 py-0.5">
+                                                    Manual
+                                                </Badge>
+                                            )}
                                         </td>
                                     </tr>
-                                )
+                                );
                             })}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div className="flex justify-between">
-                <Button variant="outline" onClick={onBack} className="border-white/10 hover:bg-white/5 hover:text-primary">Back</Button>
+            <div className="flex justify-between items-center pt-2">
+                <Button variant="outline" onClick={onBack} className="border-border hover:bg-accent text-foreground">Back</Button>
                 <div className="space-x-2">
-                    <Button onClick={onNext} className="glow-primary">Validate & Next</Button>
+                    <Button onClick={onNext} className="glow-primary font-semibold">
+                        Validate & Next
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
                 </div>
             </div>
         </div>

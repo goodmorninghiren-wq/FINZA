@@ -42,9 +42,23 @@ export async function POST(request: Request) {
                 const matchType = rule.match_type || 'AND';
 
                 const conditionResults = conditions.map((cond: any) => {
-                    // Find the field in the row case-insensitively
-                    const fieldKey = Object.keys(row).find(k => k.toLowerCase() === cond.field.toLowerCase());
-                    const rowValue = fieldKey ? (row[fieldKey]?.toString().toLowerCase() || "") : "";
+                    let rowValue = "";
+                    const fieldLower = cond.field?.toLowerCase() || "";
+
+                    if (["payee", "vendor", "contact", "name"].includes(fieldLower)) {
+                        const foundKey = Object.keys(row).find(k => ["payee", "vendor", "contact", "name", "description"].includes(k.toLowerCase()));
+                        rowValue = foundKey ? (row[foundKey]?.toString().toLowerCase() || "") : "";
+                    } else if (fieldLower === "type") {
+                        const foundKey = Object.keys(row).find(k => ["type", "transaction_type"].includes(k.toLowerCase()));
+                        rowValue = foundKey ? (row[foundKey]?.toString().toLowerCase() || "") : (row.transaction_type?.toLowerCase() || "");
+                    } else if (["reference", "ref", "check no", "cheque"].includes(fieldLower)) {
+                        const foundKey = Object.keys(row).find(k => ["reference", "ref", "check no", "cheque no", "check_number"].includes(k.toLowerCase()));
+                        rowValue = foundKey ? (row[foundKey]?.toString().toLowerCase() || "") : "";
+                    } else {
+                        const fieldKey = Object.keys(row).find(k => k.toLowerCase() === fieldLower);
+                        rowValue = fieldKey ? (row[fieldKey]?.toString().toLowerCase() || "") : "";
+                    }
+
                     const ruleValue = cond.value?.toLowerCase() || "";
 
                     switch (cond.operator) {

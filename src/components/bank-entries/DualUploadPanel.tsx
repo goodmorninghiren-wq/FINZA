@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, FileSpreadsheet, FileText, CheckCircle, Workflow, LayoutGrid, ArrowRight } from "lucide-react";
+import { Loader2, Upload, FileSpreadsheet, FileText, CheckCircle, Workflow, LayoutGrid, ArrowRight, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { read, utils } from "xlsx";
 import { useStore } from "@/store/useStore";
@@ -204,7 +204,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                {/* === LEFT: Finza Excel Upload === */}
+                {/* === LEFT: RISE360 Automation Excel Upload === */}
                 <Card className={cn("glass border-white/10 shadow-xl flex flex-col transition-all",
                     !selectedBankId && "opacity-50 pointer-events-none",
                     excelDragOver && "border-primary/50 bg-primary/5"
@@ -215,11 +215,31 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                                 <FileSpreadsheet className="h-5 w-5 text-primary" />
                             </div>
                             <div>
-                                <CardTitle className="text-base font-bold text-foreground">Finza Direct</CardTitle>
+                                <CardTitle className="text-base font-bold text-foreground">RISE360 Direct</CardTitle>
                                 <CardDescription className="text-xs">Upload Excel or CSV bank statements</CardDescription>
                             </div>
                         </div>
-                        <Badge variant="outline" className="w-fit text-xs border-primary/30 text-primary bg-primary/10">Excel / CSV</Badge>
+                        <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="w-fit text-xs border-primary/30 text-primary bg-primary/10">Excel / CSV</Badge>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <a
+                                    href="/sample_bank_statement.xlsx"
+                                    download="sample_bank_statement.xlsx"
+                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium bg-primary/10 px-2 py-1 rounded border border-primary/20"
+                                >
+                                    <Download className="h-3 w-3" />
+                                    Sample .xlsx
+                                </a>
+                                <a
+                                    href="/sample_bank_statement.csv"
+                                    download="sample_bank_statement.csv"
+                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline px-2 py-1 rounded border border-white/10 bg-white/5"
+                                >
+                                    <Download className="h-3 w-3" />
+                                    .csv
+                                </a>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col space-y-4">
                         {excelError && (
@@ -291,7 +311,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                             </div>
                             <div>
                                 <CardTitle className="text-base font-bold text-foreground">n8n AI Extraction</CardTitle>
-                                <CardDescription className="text-xs">Upload PDF → n8n processes → data goes to Finza</CardDescription>
+                                <CardDescription className="text-xs">Upload PDF → n8n processes → data goes to RISE360</CardDescription>
                             </div>
                         </div>
                         <Badge variant="outline" className="w-fit text-xs border-orange-500/30 text-orange-400 bg-orange-500/10">PDF via n8n</Badge>
@@ -357,7 +377,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                             <ArrowRight className="h-3 w-3 text-orange-400" />
                             <span className="flex items-center gap-1 text-orange-400"><Workflow className="h-3 w-3" /> n8n</span>
                             <ArrowRight className="h-3 w-3 text-primary" />
-                            <span className="flex items-center gap-1 text-primary"><LayoutGrid className="h-3 w-3" /> Finza</span>
+                            <span className="flex items-center gap-1 text-primary"><LayoutGrid className="h-3 w-3" /> RISE360</span>
                         </div>
                     </CardContent>
                 </Card>

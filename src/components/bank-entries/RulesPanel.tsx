@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Edit2, X, Save, Upload, Download, Copy, ArrowRight } from "lucide-react";
+import { Plus, Trash2, X, Save, Upload, Download, ArrowRight, Settings2, SlidersHorizontal, Copy } from "lucide-react";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
 import { RuleBuilder } from "@/components/rules/RuleBuilder";
 import * as XLSX from "xlsx";
 
@@ -31,19 +33,20 @@ export function RulesPanel() {
 
     // Fetch all relevant data when company changes
     useEffect(() => {
-        if (!selectedCompany?.id) return;
+        const companyId = selectedCompany?.id || connectedCompanies[0]?.id;
+        if (!companyId) return;
 
         const fetchData = async () => {
             // Fetch Rules
-            fetchRules(selectedCompany.id);
+            fetchRules(companyId);
 
             // Fetch QBO Data (Accounts, Vendors, Customers)
             try {
-                console.log(`[RulesPanel] Fetching data for company ${selectedCompany.id}...`);
+                console.log(`[RulesPanel] Fetching data for company ${companyId}...`);
                 const [accRes, venRes, cusRes] = await Promise.all([
-                    fetch(`/api/qbo/accounts?companyId=${selectedCompany.id}`),
-                    fetch(`/api/qbo/vendors?companyId=${selectedCompany.id}`),
-                    fetch(`/api/qbo/customers?companyId=${selectedCompany.id}`)
+                    fetch(`/api/qbo/accounts?companyId=${companyId}`),
+                    fetch(`/api/qbo/vendors?companyId=${companyId}`),
+                    fetch(`/api/qbo/customers?companyId=${companyId}`)
                 ]);
 
                 if (accRes.ok) {
@@ -75,7 +78,7 @@ export function RulesPanel() {
         };
 
         fetchData();
-    }, [selectedCompany?.id, fetchRules]);
+    }, [selectedCompany?.id, connectedCompanies, fetchRules]);
 
     // Debug State Changes
     useEffect(() => {
@@ -85,7 +88,8 @@ export function RulesPanel() {
     }, [accounts, vendors, customers]);
 
     // Filter rules for current company
-    const currentCompanyRules = rules.filter(r => r.client_id === selectedCompany.id && r.is_active !== false);
+    const activeCompanyId = selectedCompany?.id || connectedCompanies[0]?.id;
+    const currentCompanyRules = rules.filter(r => r.client_id === activeCompanyId && r.is_active !== false);
 
     // Form State for Main Panel
     const [ruleName, setRuleName] = useState("");
@@ -449,153 +453,186 @@ export function RulesPanel() {
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto space-y-4">
 
-                {/* Add/Edit Form */}
-                {isAdding && (
-                    <div className="border border-white/10 rounded-md p-3 bg-white/5 space-y-3 animate-in fade-in slide-in-from-top-2 backdrop-blur-sm">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-foreground">{editingId ? 'Edit Rule' : 'New Rule'}</span>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={resetForm}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
+                {/* Add / Edit Rule Side Drawer */}
+                <Sheet open={isAdding} onOpenChange={(open) => { if (!open) resetForm(); else setIsAdding(true); }}>
+                    <SheetContent side="right" className="sm:max-w-md w-full bg-card border-l border-border p-6 flex flex-col justify-between overflow-y-auto">
+                        <div className="space-y-5">
+                            <SheetHeader className="p-0 space-y-1">
+                                <SheetTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
+                                    <SlidersHorizontal className="h-5 w-5 text-primary" />
+                                    {editingId ? 'Edit Automation Rule' : 'Create Automation Rule'}
+                                </SheetTitle>
+                                <SheetDescription className="text-xs text-muted-foreground">
+                                    Configure logic to automatically map bank statement transactions to QBO Accounts and Contacts.
+                                </SheetDescription>
+                            </SheetHeader>
 
-                        <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Rule Name</Label>
-                            <Input className="h-7 text-sm bg-black/20 border-white/10 text-foreground" value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g. Uber" />
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">If</Label>
-                            <RuleBuilder
-                                conditions={conditions}
-                                matchType={matchType}
-                                onChange={(newConditions, newType) => {
-                                    setConditions(newConditions);
-                                    setMatchType(newType);
-                                }}
-                            />
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Then Apply</Label>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Transaction Type</Label>
-                                    <Select value={ruleType} onValueChange={(val: TransactionType) => {
-                                        setRuleType(val);
-                                        setLedger("");
-                                        setContactId("");
-                                    }}>
-                                        <SelectTrigger className="h-7 text-xs bg-black/20 border-white/10 text-foreground">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {TRANSACTION_TYPES.map(t => (
-                                                <SelectItem key={t} value={t}>{t}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                            <div className="space-y-4 pt-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold text-foreground">Rule Name</Label>
+                                    <Input
+                                        className="h-9 text-sm bg-background border-input text-foreground font-medium"
+                                        value={ruleName}
+                                        onChange={e => setRuleName(e.target.value)}
+                                        placeholder="e.g. Uber Travel Expenses"
+                                    />
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">
-                                        {['Income', 'Credit Note'].includes(ruleType) ? 'Customer (Optional)' :
-                                            ['Transfer', 'Journal Entry'].includes(ruleType) ? 'N/A' :
-                                                'Vendor (Optional)'}
-                                    </Label>
-                                    {!['Transfer', 'Journal Entry'].includes(ruleType) && (
-                                        <Select value={contactId} onValueChange={setContactId}>
-                                            <SelectTrigger className="h-7 text-xs bg-black/20 border-white/10 text-foreground">
-                                                <SelectValue placeholder="Select Contact" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">None</SelectItem>
-                                                {(['Income', 'Credit Note'].includes(ruleType) ? customers : vendors).map(c => (
-                                                    <SelectItem key={c.Id} value={c.Id}>{c.DisplayName}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                    {['Transfer', 'Journal Entry'].includes(ruleType) && (
-                                        <div className="h-7 flex items-center text-xs text-muted-foreground italic px-2 border border-white/10 rounded bg-white/5">
-                                            Not applicable
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">If (Condition Logic)</Label>
+                                    <RuleBuilder
+                                        conditions={conditions}
+                                        matchType={matchType}
+                                        onChange={(newConditions, newType) => {
+                                            setConditions(newConditions);
+                                            setMatchType(newType);
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="space-y-3 pt-2">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Then Apply Action</Label>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold text-foreground">Transaction Type</Label>
+                                            <Select value={ruleType} onValueChange={(val: TransactionType) => {
+                                                setRuleType(val);
+                                                setLedger("");
+                                                setContactId("");
+                                            }}>
+                                                <SelectTrigger className="h-9 text-xs bg-background border-input text-foreground">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {TRANSACTION_TYPES.map(t => (
+                                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    )}
-                                </div>
-                            </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold text-foreground">
+                                                {['Income', 'Credit Note'].includes(ruleType) ? 'Customer (Optional)' :
+                                                    ['Transfer', 'Journal Entry'].includes(ruleType) ? 'N/A' :
+                                                        'Vendor (Optional)'}
+                                            </Label>
+                                            {!['Transfer', 'Journal Entry'].includes(ruleType) && (
+                                                <SearchableSelect
+                                                    value={contactId}
+                                                    onValueChange={setContactId}
+                                                    options={[
+                                                        { value: "none", label: "None (No Contact)" },
+                                                        ...((['Income', 'Credit Note'].includes(ruleType) ? customers : vendors).map(c => ({
+                                                            value: c.Id,
+                                                            label: c.DisplayName || c.CompanyName || c.Id
+                                                        })))
+                                                    ]}
+                                                    placeholder={['Income', 'Credit Note'].includes(ruleType) ? "Search Customer..." : "Search Vendor..."}
+                                                    searchPlaceholder="Type to search..."
+                                                />
+                                            )}
+                                            {['Transfer', 'Journal Entry'].includes(ruleType) && (
+                                                <div className="h-9 flex items-center text-xs text-muted-foreground italic px-3 border border-border rounded-lg bg-muted/20">
+                                                    Not applicable
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
 
-                            <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">
-                                    {ruleType === 'Transfer' ? 'Transferee Bank Account' :
-                                        ruleType === 'Income' ? 'Income Ledger' :
-                                            'Expense Ledger'}
-                                </Label>
-                                <Select value={ledger} onValueChange={setLedger}>
-                                    <SelectTrigger className="h-7 text-xs bg-black/20 border-white/10 text-foreground">
-                                        <SelectValue placeholder="Select Account" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {ledgerOptions.map(a => (
-                                            <SelectItem key={a.Id} value={a.Name}>
-                                                {a.Name} <span className="text-muted-foreground text-[10px] ml-1">({a.AccountType})</span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold text-foreground">
+                                            {ruleType === 'Transfer' ? 'Transferee Bank Account' :
+                                                ruleType === 'Income' ? 'Income Ledger' :
+                                                    'Expense Ledger'}
+                                        </Label>
+                                        <SearchableSelect
+                                            value={ledger}
+                                            onValueChange={setLedger}
+                                            options={Array.from(new Map(ledgerOptions.map(a => [a.Name, a])).values()).map(a => ({
+                                                value: a.Name,
+                                                label: a.Name,
+                                                sublabel: a.AccountType ? `(${a.AccountType})` : undefined
+                                            }))}
+                                            placeholder="Search Account / Ledger..."
+                                            searchPlaceholder="Type account name..."
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <Button size="sm" className="w-full glow-primary" onClick={() => void handleSave()}>
-                            <Save className="h-4 w-4 mr-2" /> Save Rule
-                        </Button>
-                    </div>
-                )}
+                        <SheetFooter className="p-0 pt-6 mt-6 border-t border-border flex flex-row gap-2 justify-end">
+                            <Button variant="outline" onClick={resetForm} className="border-border text-foreground">
+                                Cancel
+                            </Button>
+                            <Button className="glow-primary font-semibold flex-1" onClick={() => void handleSave()}>
+                                <Save className="h-4 w-4 mr-2" /> Save Rule
+                            </Button>
+                        </SheetFooter>
+                    </SheetContent>
+                </Sheet>
 
                 {/* List Rules */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                     {currentCompanyRules.map(rule => (
-                        <div key={rule.id} className="group border border-white/10 rounded-md p-3 hover:bg-white/5 transition-colors bg-black/20">
+                        <div
+                            key={rule.id}
+                            onClick={() => startEdit(rule)}
+                            className="group border border-border rounded-xl p-3.5 transition-all duration-200 bg-card hover:bg-accent/50 hover:border-primary/40 shadow-sm hover:shadow-md cursor-pointer relative"
+                        >
                             <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium flex items-center gap-2 text-foreground">
-                                        {rule.rule_name}
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                                            {rule.rule_name}
+                                        </p>
                                         {rule.rule_type && (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground border border-white/10">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                                                 {rule.rule_type}
                                             </span>
                                         )}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        <span className={`inline-block px-1 rounded mr-1 ${rule.matchType === 'OR' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                        <span className={`inline-block text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider ${rule.matchType === 'OR' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30' : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'}`}>
                                             {rule.matchType}
                                         </span>
-                                        {getConditionSummary(rule)}
+                                        <span className="font-mono text-xs">{getConditionSummary(rule)}</span>
                                     </p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                        <p className="text-xs font-medium text-foreground">
+                                    <div className="flex items-center gap-2 mt-2 pt-1 border-t border-border/40 text-xs">
+                                        <ArrowRight className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                                        <span className="font-semibold text-foreground">
                                             {rule.actions.ledger}
-                                        </p>
+                                        </span>
                                         {rule.actions.contactId && (
-                                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                            <span className="text-muted-foreground truncate max-w-[200px]">
                                                 • {[...customers, ...vendors].find((c: any) => c.Id === rule.actions.contactId)?.DisplayName || 'Contact Selected'}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="hidden group-hover:flex gap-1">
-                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-blue-400" onClick={() => startEdit(rule)}>
-                                        <Edit2 className="h-3 w-3" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={() => void deleteRule(rule.id)}>
-                                        <Trash2 className="h-3 w-3" />
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            void deleteRule(rule.id);
+                                        }}
+                                        title="Delete Rule"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
                             </div>
                         </div>
                     ))}
                     {currentCompanyRules.length === 0 && !isAdding && (
-                        <p className="text-center text-xs text-muted-foreground py-4">No rules defined</p>
+                        <div className="text-center py-10 px-4 rounded-xl border border-dashed border-border bg-muted/20">
+                            <p className="text-sm font-medium text-foreground">No rules created yet</p>
+                            <p className="text-xs text-muted-foreground mt-1">Click the "+" button above to add your first automation rule.</p>
+                        </div>
                     )}
                 </div>
             </CardContent>

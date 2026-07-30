@@ -18,7 +18,7 @@ export type ConditionOperator =
   | 'contains' | 'not_contains' | 'starts_with' | 'ends_with' | 'equals'
   | 'gt' | 'lt' | 'eq' | 'gte' | 'lte';
 
-export type ConditionField = 'Description' | 'Amount';
+export type ConditionField = 'Description' | 'Payee' | 'Vendor' | 'Amount' | 'Type' | 'Reference';
 
 export type TransactionType = 'Expense' | 'Income' | 'Transfer' | 'Check' | 'Bill' | 'Purchase' | 'Credit Card Credit' | 'Credit Note' | 'Journal Entry';
 
