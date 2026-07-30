@@ -280,39 +280,54 @@ export function RulesPanel() {
     };
 
     // ── QBO ruleType mapping (field + operator → integer) ──────────
-    // Matches QBO's bank rules import schema exactly
+    // Matches QBO's exact bank rules export schema
     const getQBORuleType = (field: string, operator: string): number => {
         const map: Record<string, Record<string, number>> = {
-            Description: { contains: 0, not_contains: 1, starts_with: 2, ends_with: 3, equals: 4, eq: 4 },
-            Payee:       { contains: 5, not_contains: 6, starts_with: 7, ends_with: 8, equals: 9, eq: 9 },
-            Vendor:      { contains: 5, not_contains: 6, starts_with: 7, ends_with: 8, equals: 9, eq: 9 },
-            Amount:      { gt: 10, gte: 10, lt: 11, lte: 11, eq: 12, equals: 12 },
-            Reference:   { contains: 13, starts_with: 14, equals: 15, eq: 15 },
-            Type:        { equals: 16, eq: 16, contains: 16 },
+            Description: { contains: 6, not_contains: 8, starts_with: 6, ends_with: 6, equals: 7, eq: 7 },
+            Payee:       { contains: 1, not_contains: 8, starts_with: 1, ends_with: 1, equals: 2, eq: 2 },
+            Vendor:      { contains: 1, not_contains: 8, starts_with: 1, ends_with: 1, equals: 2, eq: 2 },
+            Amount:      { gt: 4, gte: 4, lt: 5, lte: 5, eq: 3, equals: 3 },
+            Reference:   { contains: 6, starts_with: 6, equals: 7, eq: 7 },
         };
-        return map[field]?.[operator] ?? 0;
+        return map[field]?.[operator] ?? 6;
     };
 
     // ── QBO actionType mapping ─────────────────────────────────────
-    // 0=Category(account)  1=TransactionType  2=Payee/Vendor  8=AutoConfirm
+    // 0=Category(account)  5=Payee/Vendor  8=AutoConfirm
     const buildQBOActions = (rule: Rule): { actionType: number; value: string }[] => {
         const actions: { actionType: number; value: string }[] = [];
-        if (rule.actions?.ledger) actions.push({ actionType: 0, value: rule.actions.ledger });
-        if (rule.rule_type) actions.push({ actionType: 1, value: rule.rule_type });
+        // 1. Category (Ledger Account Name)
+        if (rule.actions?.ledger) {
+            actions.push({ actionType: 0, value: rule.actions.ledger });
+        }
+        // 2. Vendor / Customer Display Name (actionType 5 in QBO schema)
         const contactName = [...customers, ...vendors].find((c: any) => c.Id === rule.actions?.contactId)?.DisplayName;
-        if (contactName) actions.push({ actionType: 2, value: contactName });
+        if (contactName) {
+            actions.push({ actionType: 5, value: contactName });
+        }
+        // 3. Auto-confirm (actionType 8)
         actions.push({ actionType: 8, value: String(rule.is_active !== false) });
         return actions;
     };
 
     // ── Core QBO Excel builder (.xls — Excel 97-2003 for QBO import)
     const exportQBOExcel = (rulesToExport: Rule[], filename: string) => {
-        // QBO requires exactly these 3 column headers
         const rows = rulesToExport.map(rule => {
-            const ruleConditions = (rule.conditions || []).map(c => ({
+            // Direction indicator: "-1" for Money Out (Expense), "1" for Money In (Income)
+            const isMoneyIn = ['Income', 'Credit Note', 'Credit Card Credit'].includes(rule.rule_type || '');
+            const directionValue = isMoneyIn ? "1" : "-1";
+
+            const userConditions = (rule.conditions || []).map(c => ({
                 ruleType: getQBORuleType(c.field, c.operator),
                 value: c.value,
             }));
+
+            // QBO REQUIRES ruleType: 10 as the mandatory first condition for transaction direction
+            const ruleConditions = [
+                { ruleType: 10, value: directionValue },
+                ...userConditions
+            ];
+
             return {
                 'Rule Name': rule.rule_name,
                 'Rule Conditions': JSON.stringify({
@@ -367,23 +382,14 @@ export function RulesPanel() {
     // ── QBO ruleType reverse mapping (integer → field + operator) ──
     const fromQBORuleType = (rt: number): { field: string; operator: string } => {
         const map: Record<number, { field: string; operator: string }> = {
-            0:  { field: 'Description', operator: 'contains' },
-            1:  { field: 'Description', operator: 'not_contains' },
-            2:  { field: 'Description', operator: 'starts_with' },
-            3:  { field: 'Description', operator: 'ends_with' },
-            4:  { field: 'Description', operator: 'equals' },
-            5:  { field: 'Payee', operator: 'contains' },
-            6:  { field: 'Payee', operator: 'not_contains' },
-            7:  { field: 'Payee', operator: 'starts_with' },
-            8:  { field: 'Payee', operator: 'ends_with' },
-            9:  { field: 'Payee', operator: 'equals' },
-            10: { field: 'Amount', operator: 'gt' },
-            11: { field: 'Amount', operator: 'lt' },
-            12: { field: 'Amount', operator: 'equals' },
-            13: { field: 'Reference', operator: 'contains' },
-            14: { field: 'Reference', operator: 'starts_with' },
-            15: { field: 'Reference', operator: 'equals' },
-            16: { field: 'Type', operator: 'equals' },
+            1:  { field: 'Payee', operator: 'contains' },
+            2:  { field: 'Payee', operator: 'equals' },
+            3:  { field: 'Amount', operator: 'equals' },
+            4:  { field: 'Amount', operator: 'gt' },
+            5:  { field: 'Amount', operator: 'lt' },
+            6:  { field: 'Description', operator: 'contains' },
+            7:  { field: 'Description', operator: 'equals' },
+            8:  { field: 'Description', operator: 'not_contains' },
         };
         return map[rt] || { field: 'Description', operator: 'contains' };
     };
@@ -418,14 +424,25 @@ export function RulesPanel() {
                         try { outputsParsed = JSON.parse(row['Rule Outputs'] || '{}'); } catch { /* */ }
 
                         mType = conditionsParsed.isAndRule === false ? 'OR' : 'AND';
-                        parsedConditions = (conditionsParsed.ruleConditions || []).map((rc: any) => {
-                            const { field, operator } = fromQBORuleType(rc.ruleType ?? 0);
-                            return { id: Math.random().toString(36).substr(2, 9), field, operator, value: rc.value || '' };
-                        });
+                        parsedConditions = [];
+
+                        for (const rc of (conditionsParsed.ruleConditions || [])) {
+                            if (rc.ruleType === 10) {
+                                rType = rc.value === '1' ? 'Income' : 'Expense';
+                            } else {
+                                const { field, operator } = fromQBORuleType(rc.ruleType ?? 6);
+                                parsedConditions.push({
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    field,
+                                    operator,
+                                    value: rc.value || ''
+                                });
+                            }
+                        }
+
                         for (const action of (outputsParsed.ruleActions || [])) {
                             if (action.actionType === 0) lLedger = action.value;
-                            if (action.actionType === 1) rType = action.value;
-                            if (action.actionType === 2) {
+                            if (action.actionType === 5 || action.actionType === 2) {
                                 const contact = [...customers, ...vendors].find((c: any) => c.DisplayName === action.value);
                                 if (contact) cId = contact.Id;
                             }
