@@ -138,23 +138,23 @@ export default function ManageClientsPage() {
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-32 space-y-4">
                             <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                            <p className="text-sm font-black uppercase tracking-[0.2em] text-white/40">Synchronizing registry...</p>
+                            <p className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">Synchronizing registry...</p>
                         </div>
                     ) : clients.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-32 space-y-6">
-                            <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-white/20">
+                            <div className="w-20 h-20 rounded-3xl bg-muted flex items-center justify-center text-muted-foreground">
                                 <Users size={40} />
                             </div>
                             <div className="text-center space-y-2">
-                                <h3 className="text-xl font-bold text-white">No Clients Found</h3>
+                                <h3 className="text-xl font-bold text-foreground">No Clients Found</h3>
                                 <p className="text-muted-foreground">Connect a QuickBooks company to see it here.</p>
                             </div>
                         </div>
                     ) : (
                         <div className="overflow-x-auto custom-scrollbar">
                             <Table>
-                                <TableHeader className="bg-white/[0.03]">
-                                    <TableRow className="hover:bg-transparent border-white/5">
+                                <TableHeader className="bg-muted/40">
+                                    <TableRow className="hover:bg-transparent border-border">
                                         <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 py-5 px-8">Company Details</TableHead>
                                         <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 py-5 px-8">QuickBooks ID</TableHead>
                                         <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 py-5 px-8">Primary Contact Email</TableHead>
@@ -163,7 +163,7 @@ export default function ManageClientsPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {clients.map((client) => (
-                                        <TableRow key={client.id} className="hover:bg-white/[0.02] border-white/5 transition-colors group">
+                                        <TableRow key={client.id} className="hover:bg-accent/40 border-border transition-colors group">
                                             {/* Company Name & Date */}
                                             <TableCell className="py-6 px-8">
                                                 <div className="flex items-center gap-4">
@@ -171,7 +171,7 @@ export default function ManageClientsPage() {
                                                         {client.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="font-bold text-white group-hover:text-primary transition-colors">{client.name}</p>
+                                                        <p className="font-bold text-foreground group-hover:text-primary transition-colors">{client.name}</p>
                                                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
                                                             <Calendar size={10} />
                                                             Added {new Date(client.created_at).toLocaleDateString()}
@@ -182,7 +182,7 @@ export default function ManageClientsPage() {
 
                                             {/* Realm ID */}
                                             <TableCell className="py-6 px-8">
-                                                <code className="text-[11px] bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 text-muted-foreground font-mono">
+                                                <code className="text-[11px] bg-muted/50 px-3 py-1.5 rounded-lg border border-border text-muted-foreground font-mono">
                                                     {client.id}
                                                 </code>
                                             </TableCell>
@@ -196,7 +196,7 @@ export default function ManageClientsPage() {
                                                             <Input
                                                                 value={editEmail}
                                                                 onChange={(e) => setEditEmail(e.target.value)}
-                                                                className="pl-9 h-10 bg-black/40 border-primary/30 focus:border-primary rounded-xl transition-all"
+                                                                className="pl-9 h-10 bg-muted/40 border-primary/30 focus:border-primary rounded-xl transition-all"
                                                                 placeholder="Enter client email..."
                                                                 autoFocus
                                                             />
@@ -206,13 +206,13 @@ export default function ManageClientsPage() {
                                                     <div className="flex items-center gap-3 group/mail">
                                                         <div className={cn(
                                                             "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                                                            client.client_email ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground"
+                                                            client.client_email ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"
                                                         )}>
                                                             <Mail size={14} />
                                                         </div>
                                                         <span className={cn(
                                                             "font-medium transition-colors",
-                                                            client.client_email ? "text-white" : "text-muted-foreground italic text-sm"
+                                                            client.client_email ? "text-foreground" : "text-muted-foreground italic text-sm"
                                                         )}>
                                                             {client.client_email || "No email assigned"}
                                                         </span>
@@ -228,7 +228,7 @@ export default function ManageClientsPage() {
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={handleCancel}
-                                                            className="rounded-xl h-9 w-9 p-0 hover:bg-white/5 text-muted-foreground"
+                                                            className="rounded-xl h-9 w-9 p-0 hover:bg-accent text-muted-foreground"
                                                         >
                                                             <X size={16} />
                                                         </Button>
@@ -247,7 +247,7 @@ export default function ManageClientsPage() {
                                                         size="sm"
                                                         variant="ghost"
                                                         onClick={() => handleEdit(client)}
-                                                        className="rounded-xl h-9 px-4 hover:bg-white/5 text-muted-foreground hover:text-primary transition-all group/btn"
+                                                        className="rounded-xl h-9 px-4 hover:bg-accent text-muted-foreground hover:text-primary transition-all group/btn"
                                                     >
                                                         <Edit2 size={14} className="mr-2 group-hover/btn:scale-110 transition-transform" />
                                                         Edit Contact

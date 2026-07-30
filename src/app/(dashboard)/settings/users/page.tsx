@@ -103,8 +103,8 @@ export default function UserManagementPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* User List */}
-                <Card className="lg:col-span-2 glass-strong border-white/10 shadow-xl overflow-hidden">
-                    <CardHeader className="border-b border-white/5 bg-white/5">
+                <Card className="lg:col-span-2 glass-strong border-border shadow-xl overflow-hidden">
+                    <CardHeader className="border-b border-border bg-muted/40">
                         <div className="flex items-center gap-2">
                             <Users className="h-5 w-5 text-primary" />
                             <CardTitle className="text-lg">Active Personnel</CardTitle>
@@ -120,17 +120,17 @@ export default function UserManagementPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b border-white/5 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                                        <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                                             <th className="px-6 py-4">Email</th>
                                             <th className="px-6 py-4">Role</th>
                                             <th className="px-6 py-4">Joined</th>
                                             <th className="px-6 py-4 text-right">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-white/5">
+                                    <tbody className="divide-y divide-border">
                                         {profiles.map((profile) => (
-                                            <tr key={profile.id} className="hover:bg-white/5 transition-colors group">
-                                                <td className="px-6 py-4 text-sm font-medium">{profile.email}</td>
+                                            <tr key={profile.id} className="hover:bg-accent/50 transition-colors group">
+                                                <td className="px-6 py-4 text-sm font-medium text-foreground">{profile.email}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${profile.role === 'admin'
                                                         ? 'bg-primary/10 text-primary border-primary/20'
@@ -148,7 +148,7 @@ export default function UserManagementPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleDelete(profile.id)}
-                                                            className="text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all hover-scale"
+                                                            className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all hover-scale"
                                                         >
                                                             <Trash2 size={16} />
                                                         </Button>
@@ -164,7 +164,7 @@ export default function UserManagementPage() {
                 </Card>
 
                 {/* Add User Form */}
-                <Card className="glass-strong border-white/10 shadow-xl self-start">
+                <Card className="glass-strong border-border shadow-xl self-start">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                             <UserPlus className="h-5 w-5 text-accent" />
@@ -174,7 +174,7 @@ export default function UserManagementPage() {
                     </CardHeader>
                     <CardContent>
                         {error && (
-                            <div className="p-3 mb-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2 animate-in slide-in-from-top-2">
+                            <div className="p-3 mb-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs flex items-center gap-2 animate-in slide-in-from-top-2">
                                 <AlertCircle size={14} className="shrink-0" />
                                 {error}
                             </div>
@@ -190,7 +190,7 @@ export default function UserManagementPage() {
                                         placeholder="coworker@firm.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="pl-10 h-11 bg-white/5 border-white/10 focus:ring-primary/20 transition-all"
+                                        className="pl-10 h-11 bg-muted/40 border-border focus:ring-primary/20 transition-all"
                                         required
                                     />
                                 </div>
@@ -205,7 +205,7 @@ export default function UserManagementPage() {
                                         placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="pl-10 h-11 bg-white/5 border-white/10 focus:ring-primary/20 transition-all"
+                                        className="pl-10 h-11 bg-muted/40 border-border focus:ring-primary/20 transition-all"
                                         required
                                     />
                                 </div>

@@ -233,7 +233,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                                 <a
                                     href="/sample_bank_statement.csv"
                                     download="sample_bank_statement.csv"
-                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline px-2 py-1 rounded border border-white/10 bg-white/5"
+                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline px-2 py-1 rounded border border-border bg-muted/30"
                                 >
                                     <Download className="h-3 w-3" />
                                     .csv
@@ -243,7 +243,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col space-y-4">
                         {excelError && (
-                            <div className="p-3 rounded-lg text-xs bg-red-500/10 border border-red-500/20 text-red-400">{excelError}</div>
+                            <div className="p-3 rounded-lg text-xs bg-red-500/10 border border-red-500/20 text-red-500">{excelError}</div>
                         )}
 
                         <label
@@ -251,7 +251,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                             className={cn(
                                 "flex-1 flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed transition-colors min-h-[180px]",
                                 selectedBankId ? "cursor-pointer" : "cursor-not-allowed",
-                                excelFile && !excelError ? "border-primary/50 bg-primary/5" : "border-white/15 hover:border-primary/30 hover:bg-primary/5"
+                                excelFile && !excelError ? "border-primary/50 bg-primary/5" : "border-border hover:border-primary/40 hover:bg-primary/5"
                             )}
                         >
                             <input
@@ -267,7 +267,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                                     <p className="text-sm font-medium">Parsing...</p>
                                 </div>
                             ) : excelFile && !excelError ? (
-                                <div className="flex flex-col items-center gap-3 text-green-400">
+                                <div className="flex flex-col items-center gap-3 text-emerald-500">
                                     <CheckCircle className="h-8 w-8" />
                                     <div className="text-center">
                                         <p className="text-sm font-medium text-foreground">{excelFile.name}</p>
@@ -276,7 +276,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                                    <div className="h-12 w-12 rounded-full bg-white/5 flex items-center justify-center">
+                                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center border border-border">
                                         <Upload className="h-6 w-6" />
                                     </div>
                                     <div className="text-center">
@@ -300,25 +300,25 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                 </Card>
 
                 {/* === RIGHT: n8n PDF Upload === */}
-                <Card className={cn("glass border-white/10 shadow-xl flex flex-col transition-all",
+                <Card className={cn("glass border-border shadow-xl flex flex-col transition-all",
                     !selectedBankId && "opacity-50 pointer-events-none",
                     pdfDragOver && "border-orange-500/50 bg-orange-500/5"
                 )}>
                     <CardHeader className="pb-3">
                         <div className="flex items-center gap-3">
                             <div className="h-9 w-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center">
-                                <Workflow className="h-5 w-5 text-orange-400" />
+                                <Workflow className="h-5 w-5 text-orange-500" />
                             </div>
                             <div>
                                 <CardTitle className="text-base font-bold text-foreground">n8n AI Extraction</CardTitle>
                                 <CardDescription className="text-xs">Upload PDF → n8n processes → data goes to RISE360</CardDescription>
                             </div>
                         </div>
-                        <Badge variant="outline" className="w-fit text-xs border-orange-500/30 text-orange-400 bg-orange-500/10">PDF via n8n</Badge>
+                        <Badge variant="outline" className="w-fit text-xs border-orange-500/30 text-orange-600 dark:text-orange-400 bg-orange-500/10">PDF via n8n</Badge>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col space-y-4">
                         {n8nError && (
-                            <div className="p-3 rounded-lg text-xs bg-red-500/10 border border-red-500/20 text-red-400">{n8nError}</div>
+                            <div className="p-3 rounded-lg text-xs bg-red-500/10 border border-red-500/20 text-red-500">{n8nError}</div>
                         )}
 
                         <label
@@ -326,10 +326,10 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                             className={cn(
                                 "flex-1 flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed transition-colors min-h-[180px]",
                                 selectedBankId ? "cursor-pointer" : "cursor-not-allowed",
-                                n8nStatus === 'done' ? "border-green-500/50 bg-green-500/5" :
+                                n8nStatus === 'done' ? "border-emerald-500/50 bg-emerald-500/5" :
                                     n8nStatus === 'error' ? "border-red-500/50" :
                                         (pdfFile && n8nStatus !== 'idle') ? "border-orange-500/50 bg-orange-500/5" :
-                                            "border-white/15 hover:border-orange-500/30 hover:bg-orange-500/5"
+                                            "border-border hover:border-orange-500/40 hover:bg-orange-500/5"
                             )}
                         >
                             <input
@@ -341,7 +341,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                             />
 
                             {n8nStatus === 'uploading' || n8nStatus === 'processing' ? (
-                                <div className="flex flex-col items-center gap-3 text-orange-400">
+                                <div className="flex flex-col items-center gap-3 text-orange-500">
                                     <Loader2 className="h-8 w-8 animate-spin" />
                                     <div className="text-center">
                                         <p className="text-sm font-medium">
@@ -351,7 +351,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                                     </div>
                                 </div>
                             ) : n8nStatus === 'done' ? (
-                                <div className="flex flex-col items-center gap-3 text-green-400">
+                                <div className="flex flex-col items-center gap-3 text-emerald-500">
                                     <CheckCircle className="h-8 w-8" />
                                     <div className="text-center">
                                         <p className="text-sm font-medium text-foreground">{pdfFile?.name}</p>
@@ -361,7 +361,7 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                             ) : (
                                 <div className="flex flex-col items-center gap-3 text-muted-foreground">
                                     <div className="h-12 w-12 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-                                        <FileText className="h-6 w-6 text-orange-400" />
+                                        <FileText className="h-6 w-6 text-orange-500" />
                                     </div>
                                     <div className="text-center">
                                         <p className="text-sm font-medium text-foreground">Drop PDF here</p>
@@ -374,10 +374,10 @@ export function DualUploadPanel({ onExcelDataReady, selectedBankId, onBankSelect
                         {/* n8n flow indicator */}
                         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> PDF</span>
-                            <ArrowRight className="h-3 w-3 text-orange-400" />
-                            <span className="flex items-center gap-1 text-orange-400"><Workflow className="h-3 w-3" /> n8n</span>
+                            <ArrowRight className="h-3 w-3 text-orange-500" />
+                            <span className="flex items-center gap-1 text-orange-500 font-medium"><Workflow className="h-3 w-3" /> n8n</span>
                             <ArrowRight className="h-3 w-3 text-primary" />
-                            <span className="flex items-center gap-1 text-primary"><LayoutGrid className="h-3 w-3" /> RISE360</span>
+                            <span className="flex items-center gap-1 text-primary font-medium"><LayoutGrid className="h-3 w-3" /> RISE360</span>
                         </div>
                     </CardContent>
                 </Card>

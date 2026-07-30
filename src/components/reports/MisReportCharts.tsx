@@ -16,33 +16,23 @@ import {
 
 // Enterprise professional color palette
 const BAR_COLORS: Record<string, string> = {
-  Income:      "#1A6B3F", // Deep professional green
-  Expenses:    "#8B1A1A", // Deep professional red
-  "Net Profit":"#1E3A5F", // Dark navy blue
+  Income:      "#10B981", // Vibrant Emerald Green
+  Expenses:    "#EF4444", // Vibrant Rose Red
+  "Net Profit":"#3B82F6", // Vibrant Electric Blue
 };
 
 const PIE_COLORS = [
-  "#1E3A5F", // Navy
-  "#2E86AB", // Teal-blue
-  "#A0522D", // Sienna
-  "#1A6B3F", // Green
-  "#6B46A0", // Purple
-  "#B5451B", // Brick red
-  "#2D7D9A", // Steel blue
+  "#3B82F6", // Blue
+  "#8B5CF6", // Purple
+  "#EC4899", // Pink
+  "#10B981", // Emerald
+  "#F59E0B", // Amber
+  "#06B6D4", // Cyan
+  "#6366F1", // Indigo
 ];
 
 type ChartPoint = { name: string; amount: number };
 type ExpensePoint = { name: string; value: number };
-
-const EnterpriseTooltipStyle = {
-  backgroundColor: "#FFFFFF",
-  border: "1px solid #DDE3ED",
-  borderRadius: "8px",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-  padding: "10px 14px",
-  fontSize: "13px",
-  color: "#111827",
-};
 
 interface CustomBarLabelProps {
   x?: number;
@@ -59,7 +49,7 @@ function CustomBarLabel({ x = 0, y = 0, width = 0, value = 0, currency = "" }: C
       x={x + width / 2}
       y={y - 6}
       textAnchor="middle"
-      style={{ fontSize: "11px", fontWeight: 600, fill: "#374151" }}
+      className="fill-foreground text-[11px] font-semibold"
     >
       {`${currency} ${Number(value).toLocaleString()}`}
     </text>
@@ -87,15 +77,14 @@ export function MisReportCharts({
       {/* Bar Chart: Income vs Expenses vs Net Profit */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-1 h-5 rounded-full" style={{ background: "#2E86AB" }} />
-          <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E3A5F" }}>
+          <div className="w-1 h-5 rounded-full bg-primary" />
+          <h3 className="text-sm font-bold text-foreground">
             Financial Performance
           </h3>
         </div>
         <div
-          className="h-[300px] rounded-lg p-3"
+          className="h-[300px] rounded-xl p-3 bg-card border border-border shadow-sm"
           id="mis-chart-income-vs-expenses"
-          style={{ background: "#F8FAFC", border: "1px solid #DDE3ED" }}
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -106,36 +95,43 @@ export function MisReportCharts({
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke="#E5E7EB"
+                className="stroke-border/60"
               />
               <XAxis
                 dataKey="name"
-                stroke="#9CA3AF"
                 fontSize={12}
                 tickLine={false}
-                axisLine={{ stroke: "#E5E7EB" }}
-                tick={{ fill: "#374151", fontWeight: 500 }}
+                axisLine={false}
+                tick={{ fill: "currentColor", fontSize: 12, fontWeight: 500 }}
+                className="text-muted-foreground"
               />
               <YAxis
-                stroke="#9CA3AF"
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={formatYAxis}
-                tick={{ fill: "#6B7280" }}
+                tick={{ fill: "currentColor", fontSize: 11 }}
+                className="text-muted-foreground"
               />
               <Tooltip
-                cursor={{ fill: "rgba(30,58,95,0.06)" }}
-                contentStyle={EnterpriseTooltipStyle}
+                cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  borderColor: "hsl(var(--border))",
+                  borderRadius: "10px",
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                  color: "hsl(var(--card-foreground))",
+                  fontSize: "13px"
+                }}
                 formatter={(value: number | string | undefined) => [
                   `${currency} ${Number(value ?? 0).toLocaleString()}`,
                   "Amount",
                 ]}
-                labelStyle={{ fontWeight: 700, color: "#1E3A5F", marginBottom: 4 }}
+                labelStyle={{ fontWeight: 700, color: "hsl(var(--foreground))", marginBottom: 4 }}
               />
               <Bar
                 dataKey="amount"
-                radius={[5, 5, 0, 0]}
+                radius={[6, 6, 0, 0]}
                 label={(props: any) => (
                   <CustomBarLabel {...props} currency={currency} />
                 )}
@@ -143,7 +139,7 @@ export function MisReportCharts({
                 {chartData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={BAR_COLORS[entry.name] ?? "#2E86AB"}
+                    fill={BAR_COLORS[entry.name] ?? "#3B82F6"}
                   />
                 ))}
               </Bar>
@@ -157,9 +153,9 @@ export function MisReportCharts({
             <div key={entry.name} className="flex items-center gap-1.5">
               <div
                 className="w-3 h-3 rounded-sm flex-shrink-0"
-                style={{ backgroundColor: BAR_COLORS[entry.name] ?? "#2E86AB" }}
+                style={{ backgroundColor: BAR_COLORS[entry.name] ?? "#3B82F6" }}
               />
-              <span style={{ fontSize: "12px", color: "#374151", fontWeight: 500 }}>
+              <span className="text-xs text-foreground font-medium">
                 {entry.name}
               </span>
             </div>
@@ -170,19 +166,18 @@ export function MisReportCharts({
       {/* Pie Chart: Expense Breakdown */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-1 h-5 rounded-full" style={{ background: "#2E86AB" }} />
-          <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E3A5F" }}>
+          <div className="w-1 h-5 rounded-full bg-primary" />
+          <h3 className="text-sm font-bold text-foreground">
             Expense Breakdown (Top 5)
           </h3>
         </div>
         <div
-          className="h-[300px] rounded-lg p-3"
+          className="h-[300px] rounded-xl p-3 bg-card border border-border shadow-sm"
           id="mis-chart-expense-breakdown"
-          style={{ background: "#F8FAFC", border: "1px solid #DDE3ED" }}
         >
           {topExpenses.length === 0 ? (
             <div className="h-full flex items-center justify-center">
-              <p style={{ color: "#9CA3AF", fontSize: "13px" }}>
+              <p className="text-muted-foreground text-xs">
                 No expense data available
               </p>
             </div>
@@ -195,7 +190,7 @@ export function MisReportCharts({
                   cy="45%"
                   outerRadius={95}
                   innerRadius={40}
-                  paddingAngle={2}
+                  paddingAngle={3}
                   fill="#8884d8"
                   dataKey="value"
                   stroke="none"
@@ -212,8 +207,15 @@ export function MisReportCharts({
                     `${currency} ${Number(value ?? 0).toLocaleString()}`,
                     "Amount",
                   ]}
-                  contentStyle={EnterpriseTooltipStyle}
-                  labelStyle={{ fontWeight: 700, color: "#1E3A5F" }}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    borderColor: "hsl(var(--border))",
+                    borderRadius: "10px",
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                    color: "hsl(var(--card-foreground))",
+                    fontSize: "13px"
+                  }}
+                  labelStyle={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
                 />
                 <Legend
                   iconType="square"
@@ -225,9 +227,9 @@ export function MisReportCharts({
                         ? ((entry.payload.value / total) * 100).toFixed(1)
                         : "0";
                     return (
-                      <span style={{ fontSize: "11px", color: "#374151" }}>
+                      <span className="text-xs text-foreground font-medium">
                         {value}{" "}
-                        <span style={{ color: "#6B7280" }}>({pct}%)</span>
+                        <span className="text-muted-foreground">({pct}%)</span>
                       </span>
                     );
                   }}

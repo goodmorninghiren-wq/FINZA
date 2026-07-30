@@ -248,7 +248,7 @@ export function Header() {
                     </Select>
                 </div>
 
-                <div className="h-8 w-px bg-white/20 mx-2 hidden md:block" />
+                <div className="h-8 w-px bg-border mx-2 hidden md:block" />
 
                 {/* QBO Connection Button & Status */}
                 <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '0.1s' }}>
@@ -263,15 +263,15 @@ export function Header() {
                                     handleDisconnect();
                                 }}
                                 size="sm"
-                                className="glass border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-medium transition-smooth h-9"
+                                className="glass border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-600 font-medium transition-smooth h-9"
                                 disabled={isLoading}
                             >
                                 <LogOut className="mr-2 h-3.5 w-3.5" />
                                 Disconnect {selectedCompany.name.split(' ')[0]}
                             </Button>
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass border border-green-500/30 animate-pulse-glow">
-                                <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                                <span className="text-xs font-semibold text-green-400">Connected</span>
+                                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                                <span className="text-xs font-semibold text-green-600 dark:text-green-400">Connected</span>
                             </div>
                         </>
                     ) : (
@@ -290,7 +290,7 @@ export function Header() {
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Connect to QuickBooks
                             </Button>
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass border border-white/10">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass border border-border">
                                 <div className="h-2 w-2 rounded-full bg-muted-foreground" />
                                 <span className="text-xs font-semibold text-muted-foreground">Disconnected</span>
                             </div>
@@ -319,26 +319,26 @@ export function Header() {
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 glass-strong border-white/10" align="end" forceMount>
+                    <DropdownMenuContent className="w-56 glass-strong border-border shadow-xl" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                             <div className="flex flex-col space-y-1">
                                 <p className="text-sm font-medium leading-none text-foreground">{user?.firm_name || user?.name}</p>
                                 <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator className="bg-white/10" />
-                        <DropdownMenuItem className="hover:bg-white/5 transition-smooth cursor-pointer">
+                        <DropdownMenuSeparator className="bg-border" />
+                        <DropdownMenuItem className="hover:bg-accent transition-smooth cursor-pointer">
                             <UserIcon className="mr-2 h-4 w-4" />
                             <span>Profile</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="hover:bg-white/5 transition-smooth cursor-pointer">
+                        <DropdownMenuItem className="hover:bg-accent transition-smooth cursor-pointer">
                             <Settings className="mr-2 h-4 w-4" />
                             <span>Settings</span>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuSeparator className="bg-border" />
                         <DropdownMenuItem
                             onClick={handleLogOut}
-                            className="text-red-400 hover:bg-red-500/10 transition-smooth cursor-pointer"
+                            className="text-red-500 hover:bg-red-500/10 hover:text-red-600 transition-smooth cursor-pointer"
                         >
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Log out</span>

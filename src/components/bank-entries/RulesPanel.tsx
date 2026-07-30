@@ -397,7 +397,7 @@ export function RulesPanel() {
                                         ) : (
                                             <>
                                                 {clientRulesList.map(rule => (
-                                                    <div key={rule.id} className="flex items-start justify-between space-x-2 p-2 hover:bg-white/5 rounded group transition-colors">
+                                                    <div key={rule.id} className="flex items-start justify-between space-x-2 p-2 hover:bg-accent rounded group transition-colors">
                                                         <div className="flex items-start space-x-2 flex-1">
                                                             <Checkbox
                                                                 id={rule.id}
@@ -436,7 +436,7 @@ export function RulesPanel() {
                         </DialogContent>
                     </Dialog>
 
-                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7 border-white/10 hover:bg-white/5 hover:text-primary" onClick={() => document.getElementById('rule-import-input')?.click()}>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7 border-border hover:bg-accent hover:text-primary" onClick={() => document.getElementById('rule-import-input')?.click()}>
                         <Upload className="mr-1 h-3 w-3" /> Excel
                     </Button>
                     <input
@@ -446,7 +446,7 @@ export function RulesPanel() {
                         accept=".xlsx, .xls"
                         onChange={handleExcelImport}
                     />
-                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7 border-white/10 hover:bg-white/5 hover:text-primary" onClick={handleExcelExport}>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7 border-border hover:bg-accent hover:text-primary" onClick={handleExcelExport}>
                         <Download className="mr-1 h-3 w-3" /> Export
                     </Button>
                 </div>

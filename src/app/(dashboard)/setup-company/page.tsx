@@ -289,7 +289,7 @@ export default function SetupCompanyPage() {
             )}
 
             <Tabs defaultValue="coa" className="w-full space-y-8">
-                <TabsList className="bg-white/5 border border-white/10 p-1 h-auto rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-2">
+                <TabsList className="bg-muted border border-border p-1 h-auto rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-2">
                     <TabsTrigger value="coa" className="rounded-xl py-3 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow flex items-center gap-2 uppercase font-black tracking-widest text-[10px]">
                         <LayoutGrid size={14} />
                         Chart of Accounts

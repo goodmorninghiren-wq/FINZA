@@ -101,10 +101,10 @@ export function Step1Upload({ onNext, onFileSelect, selectedFile, onBankSelect, 
                 <div className="space-y-2">
                     <Label className="text-muted-foreground">Select Bank Account</Label>
                     <Select value={selectedBankId} onValueChange={onBankSelect} disabled={loadingBanks || bankAccounts.length === 0}>
-                        <SelectTrigger className="bg-black/20 border-white/10 text-foreground">
+                        <SelectTrigger className="bg-muted/40 border-border text-foreground">
                             <SelectValue placeholder={loadingBanks ? "Loading..." : "Select a Bank Account"} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-popover border-border">
                             {bankAccounts.map((acc: any) => (
                                 <SelectItem key={acc.Id} value={acc.Id}>
                                     {acc.Name} ({acc.CurrencyRef?.value || 'USD'})
@@ -116,7 +116,7 @@ export function Step1Upload({ onNext, onFileSelect, selectedFile, onBankSelect, 
 
                 {/* File Upload */}
                 <div
-                    className={`w-full h-64 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${isDragOver ? "border-primary bg-primary/10" : "border-white/10 bg-white/5 hover:border-primary/50 hover:bg-white/10"
+                    className={`w-full h-64 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${isDragOver ? "border-primary bg-primary/10" : "border-border bg-muted/20 hover:border-primary/50 hover:bg-muted/40"
                         }`}
                     onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                     onDragLeave={() => setIsDragOver(false)}
@@ -142,7 +142,7 @@ export function Step1Upload({ onNext, onFileSelect, selectedFile, onBankSelect, 
                         </div>
                     ) : (
                         <div className="flex flex-col items-center space-y-3">
-                            <div className="bg-white/5 p-4 rounded-full border border-white/10">
+                            <div className="bg-muted p-4 rounded-full border border-border">
                                 <Upload className="h-10 w-10 text-muted-foreground" />
                             </div>
                             <div className="text-center">
@@ -163,7 +163,7 @@ export function Step1Upload({ onNext, onFileSelect, selectedFile, onBankSelect, 
 
             {/* Actions */}
             <div className="flex flex-col-reverse sm:flex-row justify-between w-full max-w-xl gap-4">
-                <Button variant="outline" className="w-full sm:w-auto text-slate-500">
+                <Button variant="outline" className="w-full sm:w-auto text-muted-foreground hover:text-foreground">
                     <FileSpreadsheet className="mr-2 h-4 w-4" /> Download Template
                 </Button>
 
@@ -177,7 +177,7 @@ export function Step1Upload({ onNext, onFileSelect, selectedFile, onBankSelect, 
                 </Button>
             </div>
 
-            <div className="text-xs text-slate-400 mt-8 max-w-md text-center">
+            <div className="text-xs text-muted-foreground mt-8 max-w-md text-center">
                 <p>Use the template above to format your bank statement.</p>
             </div>
         </div>

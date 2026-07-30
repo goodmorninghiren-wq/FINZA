@@ -68,21 +68,22 @@ export function FinancialTable({ data, currency, totalIncome }: FinancialTablePr
                 <div key={key}>
                     {/* Section Header Row */}
                     <div
-                        className="flex items-center justify-between cursor-pointer group transition-colors duration-150"
+                        className={`flex items-center justify-between cursor-pointer group transition-colors duration-150 border-b border-border ${
+                            level === 0 
+                                ? "bg-muted/60 dark:bg-muted/30 border-l-4 border-l-primary" 
+                                : "hover:bg-accent/40 border-l-4 border-l-transparent"
+                        }`}
                         style={{
                             paddingLeft: `${level * 20 + 16}px`,
                             paddingRight: "16px",
                             paddingTop: level === 0 ? "12px" : "9px",
                             paddingBottom: level === 0 ? "12px" : "9px",
-                            backgroundColor: level === 0 ? ROW_SECTION_L0 : "transparent",
-                            borderLeft: level === 0 ? `4px solid ${ACCENT_BLUE}` : `4px solid transparent`,
-                            borderBottom: `1px solid ${BORDER_COLOR}`,
                         }}
                         onClick={() => hasChildren && toggleSection(key)}
                     >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                             {hasChildren ? (
-                                <span style={{ color: ACCENT_BLUE, flexShrink: 0 }}>
+                                <span className="text-primary shrink-0">
                                     {isExpanded
                                         ? <ChevronDown className="h-4 w-4" />
                                         : <ChevronRight className="h-4 w-4" />
@@ -92,14 +93,9 @@ export function FinancialTable({ data, currency, totalIncome }: FinancialTablePr
                                 <span className="w-4 flex-shrink-0" />
                             )}
                             <span
-                                className="truncate"
-                                style={{
-                                    fontSize: level === 0 ? "14px" : "13px",
-                                    fontWeight: level === 0 ? 700 : 600,
-                                    color: level === 0 ? NAVY : TEXT_MAIN,
-                                    letterSpacing: level === 0 ? "0.01em" : "0",
-                                    textTransform: level === 0 ? "uppercase" : "none",
-                                }}
+                                className={`truncate text-foreground ${
+                                    level === 0 ? "text-sm font-bold uppercase tracking-wider" : "text-xs font-semibold"
+                                }`}
                             >
                                 {headerText}
                             </span>
@@ -107,25 +103,13 @@ export function FinancialTable({ data, currency, totalIncome }: FinancialTablePr
 
                         <div className="flex items-center gap-6 flex-shrink-0">
                             <span
-                                className="font-mono text-right"
-                                style={{
-                                    fontSize: level === 0 ? "14px" : "13px",
-                                    fontWeight: level === 0 ? 700 : 600,
-                                    color: isPositive ? TEXT_POSITIVE : TEXT_NEGATIVE,
-                                    minWidth: "140px",
-                                }}
+                                className={`font-mono text-right min-w-[140px] ${
+                                    level === 0 ? "text-sm font-bold" : "text-xs font-semibold"
+                                } ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
                             >
                                 {formatCurrency(summaryValue)}
                             </span>
-                            <span
-                                className="font-mono text-right"
-                                style={{
-                                    fontSize: "12px",
-                                    fontWeight: level === 0 ? 600 : 400,
-                                    color: TEXT_MUTED,
-                                    minWidth: "60px",
-                                }}
-                            >
+                            <span className="font-mono text-right text-xs text-muted-foreground min-w-[60px]">
                                 {percentage}%
                             </span>
                         </div>
@@ -150,44 +134,26 @@ export function FinancialTable({ data, currency, totalIncome }: FinancialTablePr
             return (
                 <div
                     key={key}
-                    className="flex items-center justify-between transition-colors duration-100"
+                    className={`flex items-center justify-between transition-colors duration-100 border-b border-border border-l-4 border-l-transparent hover:bg-accent/40 ${
+                        isEven ? "bg-card" : "bg-muted/20"
+                    }`}
                     style={{
                         paddingLeft: `${level * 20 + 16}px`,
                         paddingRight: "16px",
                         paddingTop: "8px",
                         paddingBottom: "8px",
-                        backgroundColor: isEven ? "#FFFFFF" : ROW_ALT,
-                        borderBottom: `1px solid ${BORDER_COLOR}`,
-                        borderLeft: "4px solid transparent",
-                    }}
-                    onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F0F6FF";
-                    }}
-                    onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.backgroundColor = isEven ? "#FFFFFF" : ROW_ALT;
                     }}
                 >
-                    <span
-                        className="truncate"
-                        style={{ fontSize: "13px", color: TEXT_MAIN, paddingLeft: "20px" }}
-                    >
+                    <span className="truncate text-xs text-foreground pl-5">
                         {label}
                     </span>
                     <div className="flex items-center gap-6 flex-shrink-0">
-                        <span
-                            className="font-mono text-right"
-                            style={{
-                                fontSize: "13px",
-                                color: value < 0 ? TEXT_NEGATIVE : TEXT_MAIN,
-                                minWidth: "140px",
-                            }}
-                        >
+                        <span className={`font-mono text-right text-xs min-w-[140px] ${
+                            value < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"
+                        }`}>
                             {formatCurrency(value)}
                         </span>
-                        <span
-                            className="font-mono text-right"
-                            style={{ fontSize: "12px", color: TEXT_MUTED, minWidth: "60px" }}
-                        >
+                        <span className="font-mono text-right text-xs text-muted-foreground min-w-[60px]">
                             {percentage}%
                         </span>
                     </div>
@@ -200,9 +166,9 @@ export function FinancialTable({ data, currency, totalIncome }: FinancialTablePr
 
     if (!data?.Rows?.Row) {
         return (
-            <Card className="border shadow-sm" style={{ borderColor: BORDER_COLOR }}>
+            <Card className="border border-border shadow-sm">
                 <CardContent className="p-10 text-center">
-                    <p style={{ color: TEXT_MUTED, fontSize: "14px" }}>
+                    <p className="text-muted-foreground text-sm">
                         No detailed financial data available. Select a date range and click Refresh.
                     </p>
                 </CardContent>
@@ -211,28 +177,22 @@ export function FinancialTable({ data, currency, totalIncome }: FinancialTablePr
     }
 
     return (
-        <Card className="border shadow-sm overflow-hidden" style={{ borderColor: BORDER_COLOR }}>
+        <Card className="border border-border shadow-sm overflow-hidden bg-card">
             {/* Card Header */}
-            <CardHeader className="pb-0" style={{ borderBottom: `1px solid ${BORDER_COLOR}` }}>
+            <CardHeader className="pb-0 border-b border-border">
                 <div className="flex items-center justify-between pb-4">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <div
-                                className="w-1 h-5 rounded-full"
-                                style={{ background: ACCENT_BLUE }}
-                            />
-                            <CardTitle style={{ fontSize: "16px", fontWeight: 700, color: NAVY }}>
+                            <div className="w-1 h-5 rounded-full bg-primary" />
+                            <CardTitle className="text-base font-bold text-foreground">
                                 Detailed Financial Breakdown
                             </CardTitle>
                         </div>
-                        <p style={{ fontSize: "13px", color: TEXT_MUTED, paddingLeft: "12px" }}>
+                        <p className="text-xs text-muted-foreground pl-3">
                             Click on section rows to expand / collapse line items
                         </p>
                     </div>
-                    <span
-                        className="text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-md"
-                        style={{ color: NAVY, background: ROW_SECTION_L0, border: `1px solid ${BORDER_COLOR}` }}
-                    >
+                    <span className="text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-md bg-muted text-muted-foreground border border-border">
                         Profit & Loss
                     </span>
                 </div>
@@ -240,71 +200,28 @@ export function FinancialTable({ data, currency, totalIncome }: FinancialTablePr
 
             <CardContent className="p-0">
                 {/* Table Column Headers */}
-                <div
-                    className="flex items-center justify-between"
-                    style={{
-                        backgroundColor: NAVY,
-                        paddingLeft: "16px",
-                        paddingRight: "16px",
-                        paddingTop: "10px",
-                        paddingBottom: "10px",
-                    }}
-                >
-                    <span
-                        style={{
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            color: "#FFFFFF",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
-                        }}
-                    >
+                <div className="flex items-center justify-between bg-primary text-primary-foreground px-4 py-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">
                         Particulars
                     </span>
                     <div className="flex items-center gap-6">
-                        <span
-                            style={{
-                                fontSize: "11px",
-                                fontWeight: 700,
-                                color: "#FFFFFF",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.08em",
-                                minWidth: "140px",
-                                textAlign: "right",
-                            }}
-                        >
+                        <span className="text-[11px] font-bold uppercase tracking-wider min-w-[140px] text-right">
                             Amount
                         </span>
-                        <span
-                            style={{
-                                fontSize: "11px",
-                                fontWeight: 700,
-                                color: "#FFFFFF",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.08em",
-                                minWidth: "60px",
-                                textAlign: "right",
-                            }}
-                        >
+                        <span className="text-[11px] font-bold uppercase tracking-wider min-w-[60px] text-right">
                             % of Income
                         </span>
                     </div>
                 </div>
 
                 {/* Table Body */}
-                <div className="overflow-y-auto" style={{ maxHeight: "620px" }}>
+                <div className="overflow-y-auto max-h-[620px]">
                     {data.Rows.Row.map((row: any, idx: number) => renderRow(row, 0, `root-${idx}`, idx))}
                 </div>
 
                 {/* Table Footer */}
-                <div
-                    className="flex items-center justify-end px-4 py-3"
-                    style={{
-                        borderTop: `1px solid ${BORDER_COLOR}`,
-                        backgroundColor: "#F9FAFB",
-                    }}
-                >
-                    <span style={{ fontSize: "11px", color: TEXT_MUTED }}>
+                <div className="flex items-center justify-end px-4 py-3 border-t border-border bg-muted/30">
+                    <span className="text-xs text-muted-foreground">
                         All amounts in {currency} · Figures sourced from QuickBooks Online
                     </span>
                 </div>

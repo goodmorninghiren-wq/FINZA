@@ -84,7 +84,7 @@ export function Sidebar() {
                                 "flex items-center px-3 py-3 text-sm transition-smooth group relative rounded-lg stagger-item",
                                 isActive
                                     ? "bg-gradient-to-r from-primary to-accent text-white shadow-lg glow-primary"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
                             )}
                             style={{ animationDelay: `${index * 0.05}s` }}
                         >
@@ -104,7 +104,7 @@ export function Sidebar() {
                             {!sidebarOpen && (
                                 <div className="absolute left-full ml-3 px-3 py-2 glass-strong text-foreground text-xs rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-smooth shadow-xl">
                                     {item.label}
-                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-white/10 rotate-45" />
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-border rotate-45" />
                                 </div>
                             )}
 
@@ -120,7 +120,7 @@ export function Sidebar() {
 
             {/* Footer / Version */}
             {sidebarOpen && (
-                <div className="p-4 border-t border-white/10">
+                <div className="p-4 border-t border-border">
                     <div className="glass rounded-lg p-3 text-center animate-fade-in">
                         <p className="text-xs text-muted-foreground font-medium">Version</p>
                         <p className="text-sm font-bold gradient-text">v1.0.0 Alpha</p>

@@ -258,7 +258,7 @@ export default function MasterCOAPage() {
                             <Input
                                 value={newIndustryName}
                                 onChange={(e) => setNewIndustryName(e.target.value)}
-                                className="h-12 bg-black/40 border-white/10 rounded-xl focus:border-primary/50"
+                                className="h-12 bg-muted/40 border-border rounded-xl focus:border-primary/50"
                                 placeholder="e.g. Real Estate, Law Firm..."
                             />
                         </div>
@@ -266,7 +266,7 @@ export default function MasterCOAPage() {
                             <Button
                                 onClick={() => handleAddIndustry(false)}
                                 disabled={isActionLoading || !newIndustryName}
-                                className="h-12 px-6 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                                className="h-12 px-6 rounded-xl bg-muted/50 border border-border text-foreground hover:bg-muted"
                             >
                                 <Plus size={16} className="mr-2" />
                                 Empty Template
@@ -301,8 +301,8 @@ export default function MasterCOAPage() {
                                 className={cn(
                                     "flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border group",
                                     selectedId === ind.id
-                                        ? "bg-primary/10 border-primary/20 text-white shadow-lg shadow-primary/5 translate-x-2"
-                                        : "bg-white/[0.02] border-white/5 text-muted-foreground hover:bg-white/5 hover:border-white/10"
+                                        ? "bg-primary/10 border-primary/20 text-primary font-bold shadow-lg shadow-primary/5 translate-x-2"
+                                        : "bg-card border-border text-muted-foreground hover:bg-accent hover:border-border"
                                 )}
                             >
                                 <div className="flex items-center gap-3">
@@ -311,7 +311,7 @@ export default function MasterCOAPage() {
                                 </div>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleDeleteIndustry(ind.id); }}
-                                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition-all"
+                                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"
                                 >
                                     <Trash2 size={14} />
                                 </button>
@@ -321,11 +321,11 @@ export default function MasterCOAPage() {
                 </div>
 
                 {/* Account Table */}
-                <Card className="lg:col-span-3 glass-premium border-white/5 relative overflow-hidden h-fit">
+                <Card className="lg:col-span-3 glass-premium border-border relative overflow-hidden h-fit">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-                    <CardHeader className="relative z-10 flex flex-row items-center justify-between border-b border-white/5">
+                    <CardHeader className="relative z-10 flex flex-row items-center justify-between border-b border-border">
                         <div className="space-y-1">
-                            <CardTitle className="text-xl font-black uppercase italic text-white flex items-center gap-3">
+                            <CardTitle className="text-xl font-black uppercase italic text-foreground flex items-center gap-3">
                                 <span className="text-primary">{currentIndustry?.name}</span>
                                 <span className="text-[10px] not-italic font-bold text-muted-foreground/40 font-mono tracking-tighter self-end mb-1">ID: {currentIndustry?.id}</span>
                             </CardTitle>
@@ -346,8 +346,8 @@ export default function MasterCOAPage() {
                         {currentIndustry ? (
                             <div className="overflow-x-auto custom-scrollbar">
                                 <Table>
-                                    <TableHeader className="bg-white/[0.03]">
-                                        <TableRow className="hover:bg-transparent border-white/5">
+                                    <TableHeader className="bg-muted/40">
+                                        <TableRow className="hover:bg-transparent border-border">
                                             <TableHead className="text-[10px] font-black uppercase tracking-wider py-5 px-8">Account Name</TableHead>
                                             <TableHead className="text-[10px] font-black uppercase tracking-wider py-5 px-8">Type</TableHead>
                                             <TableHead className="text-[10px] font-black uppercase tracking-wider py-5 px-8">Detail Type</TableHead>
@@ -356,16 +356,16 @@ export default function MasterCOAPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {currentIndustry.industry_coa_templates.map((acc) => (
-                                            <TableRow key={acc.id} className="hover:bg-white/[0.02] border-white/5 transition-colors group">
+                                            <TableRow key={acc.id} className="hover:bg-accent/40 border-border transition-colors group">
                                                 <TableCell className="py-4 px-8">
                                                     {editingAccount === acc.id ? (
                                                         <Input
                                                             value={editValues.account_name}
                                                             onChange={(e) => setEditValues(prev => ({ ...prev, account_name: e.target.value }))}
-                                                            className="h-9 bg-black/40 border-primary/50 text-white font-bold"
+                                                            className="h-9 bg-muted/40 border-primary/50 text-foreground font-bold"
                                                         />
                                                     ) : (
-                                                        <span className="font-bold text-white uppercase tracking-wider text-xs">{acc.account_name}</span>
+                                                        <span className="font-bold text-foreground uppercase tracking-wider text-xs">{acc.account_name}</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="py-4 px-8">
@@ -373,10 +373,10 @@ export default function MasterCOAPage() {
                                                         <Input
                                                             value={editValues.account_type}
                                                             onChange={(e) => setEditValues(prev => ({ ...prev, account_type: e.target.value }))}
-                                                            className="h-9 bg-black/40 border-white/10 text-xs text-muted-foreground uppercase font-bold"
+                                                            className="h-9 bg-muted/40 border-border text-xs text-muted-foreground uppercase font-bold"
                                                         />
                                                     ) : (
-                                                        <Badge variant="outline" className="bg-white/5 border-white/10 text-[9px] font-black uppercase tracking-widest">{acc.account_type}</Badge>
+                                                        <Badge variant="outline" className="bg-muted border-border text-[9px] font-black uppercase tracking-widest">{acc.account_type}</Badge>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="py-4 px-8 font-mono text-[10px] text-muted-foreground/60 uppercase">
@@ -428,12 +428,12 @@ export default function MasterCOAPage() {
                             </div>
                         ) : (
                             <div className="py-40 flex flex-col items-center justify-center space-y-6">
-                                <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-white/10">
+                                <div className="w-20 h-20 rounded-3xl bg-muted flex items-center justify-center text-muted-foreground/30">
                                     <LayoutGrid size={40} />
                                 </div>
                                 <div className="text-center space-y-1">
-                                    <p className="text-lg font-black uppercase italic text-white/40">Select Industry</p>
-                                    <p className="text-sm text-muted-foreground/40">Load a template from the left to manage its library.</p>
+                                    <p className="text-lg font-black uppercase italic text-muted-foreground">Select Industry</p>
+                                    <p className="text-sm text-muted-foreground/60">Load a template from the left to manage its library.</p>
                                 </div>
                             </div>
                         )}
@@ -443,21 +443,21 @@ export default function MasterCOAPage() {
 
             {/* Legend & Help */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
-                <div className="p-6 rounded-3xl bg-primary/5 border border-primary/10 flex gap-4">
+                <div className="p-6 rounded-3xl bg-primary/5 border border-primary/20 flex gap-4">
                     <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0"><Building2 size={20} /></div>
                     <div className="space-y-1">
                         <p className="text-[11px] font-black uppercase tracking-widest text-primary italic">Pro Tip: QBO Cloning</p>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            Connect to a high-quality client company in QuickBooks first. Then use the <span className="text-white font-bold italic underline">"Clone from QBO"</span> feature here to instantly import their entire Chart of Accounts as a new master template for future use.
+                            Connect to a high-quality client company in QuickBooks first. Then use the <span className="text-foreground font-bold italic underline">"Clone from QBO"</span> feature here to instantly import their entire Chart of Accounts as a new master template for future use.
                         </p>
                     </div>
                 </div>
-                <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 flex gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 shrink-0"><LayoutGrid size={20} /></div>
+                <div className="p-6 rounded-3xl bg-card border border-border flex gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground shrink-0"><LayoutGrid size={20} /></div>
                     <div className="space-y-1">
-                        <p className="text-[11px] font-black uppercase tracking-widest text-white/40 italic">Industry Library</p>
+                        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground italic">Industry Library</p>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            This library is your central repository. Changing accounts here <span className="text-white font-bold italic underline">will not modify</span> existing client accounts, but will be available for all new company setups.
+                            This library is your central repository. Changing accounts here <span className="text-foreground font-bold italic underline">will not modify</span> existing client accounts, but will be available for all new company setups.
                         </p>
                     </div>
                 </div>
