@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import {
     Plus, Trash2, Save, Upload, Download, ArrowRight, SlidersHorizontal,
     Copy, RefreshCw, CloudUpload, CloudDownload, CheckCircle2, AlertCircle,
-    MoreVertical, Pencil, BarChart3, Zap, AlertTriangle, TrendingUp, ChevronDown, ChevronUp, Filter
+    MoreVertical, Pencil, BarChart3, Zap, AlertTriangle, TrendingUp, Filter
 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { RuleBuilder } from "@/components/rules/RuleBuilder";
@@ -83,8 +83,6 @@ export function RulesPanel() {
     const [syncError, setSyncError] = useState<string | null>(null);
     const [lastSynced, setLastSynced] = useState<string | null>(null);
     const [syncSuccess, setSyncSuccess] = useState<{ imported?: number; exported?: number } | null>(null);
-
-    // Push dialog state
     const [selectedPushRules, setSelectedPushRules] = useState<string[]>([]);
 
     // Import from client dialog
@@ -151,11 +149,10 @@ export function RulesPanel() {
         fetchClientRules();
     }, [importClient, isImportOpen]);
 
-    // ── Filtered & Searched Rules ─────────────────────────────────
+    // ── Filtered Rules ─────────────────────────────────────────────
     const currentCompanyRules = rules.filter(r =>
         r.client_id === activeCompanyId && r.is_active !== false
     );
-
     const displayedRules = currentCompanyRules.filter(r => {
         const typeMatch = filterType === 'All' || r.rule_type === filterType;
         const searchMatch = !searchQuery ||
@@ -165,11 +162,10 @@ export function RulesPanel() {
         return typeMatch && searchMatch;
     });
 
-    // ── Ledger Options ──────────────────────────────────────────────
+    // ── Ledger Options ─────────────────────────────────────────────
     const incomeAccounts = accounts.filter(a => a.Classification === 'Revenue' || a.AccountType === 'Income' || a.AccountType === 'Other Income');
     const expenseAccounts = accounts.filter(a => a.Classification === 'Expense' || a.AccountType === 'Expense' || a.AccountType === 'Other Expense' || a.AccountType === 'Cost of Goods Sold');
     const bankAccounts = accounts.filter(a => a.AccountType === 'Bank' || a.AccountType === 'Credit Card');
-
     const getLedgerOptions = () => {
         if (ruleType === 'Income' || ruleType === 'Credit Note') return incomeAccounts;
         if (ruleType === 'Transfer') return bankAccounts;
@@ -177,7 +173,7 @@ export function RulesPanel() {
         return expenseAccounts.length > 0 ? expenseAccounts : accounts;
     };
 
-    // ── Form Helpers ────────────────────────────────────────────────
+    // ── Form Helpers ───────────────────────────────────────────────
     const resetForm = () => {
         setRuleName(""); setLedger(""); setRuleType('Expense');
         setContactId(""); setAutoApply(true);
@@ -244,7 +240,7 @@ export function RulesPanel() {
         setIsImportOpen(false); setImportClient(""); setSelectedImportRules([]); setClientRulesList([]);
     };
 
-    // ── QBO Sync: Pull suggestions from QBO ─────────────────────────
+    // ── QBO Sync: Pull from QBO ────────────────────────────────────
     const handleSyncFromQBO = async () => {
         if (!activeCompanyId) return;
         setIsSyncing(true); setSyncError(null); setQboSuggestions([]); setSyncStats(null);
@@ -283,13 +279,73 @@ export function RulesPanel() {
         setSyncDialogOpen(false); setSelectedSuggestions([]);
     };
 
-    // ── QBO Push: Export rules to QBO as QBO-compatible Excel ────────
+    // ── QBO ruleType mapping (field + operator → integer) ──────────
+    // Matches QBO's bank rules import schema exactly
+    const getQBORuleType = (field: string, operator: string): number => {
+        const map: Record<string, Record<string, number>> = {
+            Description: { contains: 0, not_contains: 1, starts_with: 2, ends_with: 3, equals: 4, eq: 4 },
+            Payee:       { contains: 5, not_contains: 6, starts_with: 7, ends_with: 8, equals: 9, eq: 9 },
+            Vendor:      { contains: 5, not_contains: 6, starts_with: 7, ends_with: 8, equals: 9, eq: 9 },
+            Amount:      { gt: 10, gte: 10, lt: 11, lte: 11, eq: 12, equals: 12 },
+            Reference:   { contains: 13, starts_with: 14, equals: 15, eq: 15 },
+            Type:        { equals: 16, eq: 16, contains: 16 },
+        };
+        return map[field]?.[operator] ?? 0;
+    };
+
+    // ── QBO actionType mapping ─────────────────────────────────────
+    // 0=Category(account)  1=TransactionType  2=Payee/Vendor  8=AutoConfirm
+    const buildQBOActions = (rule: Rule): { actionType: number; value: string }[] => {
+        const actions: { actionType: number; value: string }[] = [];
+        if (rule.actions?.ledger) actions.push({ actionType: 0, value: rule.actions.ledger });
+        if (rule.rule_type) actions.push({ actionType: 1, value: rule.rule_type });
+        const contactName = [...customers, ...vendors].find((c: any) => c.Id === rule.actions?.contactId)?.DisplayName;
+        if (contactName) actions.push({ actionType: 2, value: contactName });
+        actions.push({ actionType: 8, value: String(rule.is_active !== false) });
+        return actions;
+    };
+
+    // ── Core QBO Excel builder (.xls — Excel 97-2003 for QBO import)
+    const exportQBOExcel = (rulesToExport: Rule[], filename: string) => {
+        // QBO requires exactly these 3 column headers
+        const rows = rulesToExport.map(rule => {
+            const ruleConditions = (rule.conditions || []).map(c => ({
+                ruleType: getQBORuleType(c.field, c.operator),
+                value: c.value,
+            }));
+            return {
+                'Rule Name': rule.rule_name,
+                'Rule Conditions': JSON.stringify({
+                    ruleConditions,
+                    isAndRule: (rule.matchType || 'AND') === 'AND',
+                }),
+                'Rule Outputs': JSON.stringify({
+                    ruleActions: buildQBOActions(rule),
+                }),
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows, {
+            header: ['Rule Name', 'Rule Conditions', 'Rule Outputs'],
+        });
+        ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Rules');
+        // Excel 97-2003 (.xls) — required format for QBO bank rules import
+        XLSX.writeFile(wb, filename, { bookType: 'xls' });
+    };
+
+    // ── QBO Push: Export selected rules as .xls ────────────────────
     const handlePushToQBO = async () => {
         if (!activeCompanyId || selectedPushRules.length === 0) return;
         setIsPushing(true);
         try {
             const rulesToPush = currentCompanyRules.filter(r => selectedPushRules.includes(r.id));
-            exportQBOExcel(rulesToPush, `QBO_Push_Rules_${selectedCompany?.name?.replace(/ /g, '_') || 'FINZA'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            exportQBOExcel(
+                rulesToPush,
+                `QBO_Push_Rules_${selectedCompany?.name?.replace(/ /g, '_') || 'FINZA'}_${new Date().toISOString().split('T')[0]}.xls`
+            );
             setSyncSuccess({ exported: rulesToPush.length });
         } catch (e: any) {
             setSyncError(e.message);
@@ -299,117 +355,17 @@ export function RulesPanel() {
         }
     };
 
-    // ── QBO ruleType mapping ────────────────────────────────────────
-    // Matches QBO's bank rules import schema exactly.
-    // ruleType encodes BOTH the field and operator in a single integer.
-    const getQBORuleType = (field: string, operator: string): number => {
-        const map: Record<string, Record<string, number>> = {
-            Description: {
-                contains: 0, not_contains: 1, starts_with: 2, ends_with: 3,
-                equals: 4, eq: 4,
-            },
-            Payee: {
-                contains: 5, not_contains: 6, starts_with: 7, ends_with: 8,
-                equals: 9, eq: 9,
-            },
-            Vendor: {
-                contains: 5, not_contains: 6, starts_with: 7, ends_with: 8,
-                equals: 9, eq: 9,
-            },
-            Amount: {
-                gt: 10, gte: 10, lt: 11, lte: 11, eq: 12, equals: 12,
-            },
-            Reference: {
-                contains: 13, starts_with: 14, equals: 15, eq: 15,
-            },
-            Type: {
-                equals: 16, eq: 16, contains: 16,
-            },
-        };
-        return map[field]?.[operator] ?? 0;
-    };
-
-    // ── QBO actionType mapping ─────────────────────────────────────
-    // actionType 0 = Category (account name)
-    // actionType 1 = Transaction type string
-    // actionType 2 = Payee / vendor name
-    // actionType 8 = Auto-confirm ("true" / "false")
-    const buildQBOActions = (rule: Rule): { actionType: number; value: string }[] => {
-        const actions: { actionType: number; value: string }[] = [];
-        // Category (ledger account) — always present
-        if (rule.actions?.ledger) {
-            actions.push({ actionType: 0, value: rule.actions.ledger });
-        }
-        // Transaction type
-        if (rule.rule_type) {
-            actions.push({ actionType: 1, value: rule.rule_type });
-        }
-        // Vendor / Customer name
-        const contactName = [...customers, ...vendors].find(
-            (c: any) => c.Id === rule.actions?.contactId
-        )?.DisplayName;
-        if (contactName) {
-            actions.push({ actionType: 2, value: contactName });
-        }
-        // Auto-confirm
-        actions.push({ actionType: 8, value: String(rule.is_active !== false) });
-        return actions;
-    };
-
-    // ── Core QBO Excel builder ─────────────────────────────────────
-    const exportQBOExcel = (rulesToExport: Rule[], filename: string) => {
-        // QBO requires exactly these 3 column headers
-        const rows = rulesToExport.map(rule => {
-            // Build ruleConditions array
-            const ruleConditions = (rule.conditions || []).map(c => ({
-                ruleType: getQBORuleType(c.field, c.operator),
-                value: c.value,
-            }));
-
-            const ruleConditionsJSON = JSON.stringify({
-                ruleConditions,
-                isAndRule: (rule.matchType || 'AND') === 'AND',
-            });
-
-            const ruleOutputsJSON = JSON.stringify({
-                ruleActions: buildQBOActions(rule),
-            });
-
-            return {
-                'Rule Name': rule.rule_name,
-                'Rule Conditions': ruleConditionsJSON,
-                'Rule Outputs': ruleOutputsJSON,
-            };
-        });
-
-        // Build worksheet with fixed column order
-        const ws = XLSX.utils.json_to_sheet(rows, {
-            header: ['Rule Name', 'Rule Conditions', 'Rule Outputs'],
-        });
-
-        // Set column widths for readability
-        ws['!cols'] = [
-            { wch: 30 },  // Rule Name
-            { wch: 60 },  // Rule Conditions
-            { wch: 60 },  // Rule Outputs
-        ];
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Rules');
-        XLSX.writeFile(wb, filename);
-    };
-
-    // ── Excel Export (QBO-compatible format) ──────────────────────
+    // ── Excel Export (QBO-compatible .xls format) ──────────────────
     const handleExcelExport = () => {
         if (currentCompanyRules.length === 0) { alert('No rules to export.'); return; }
         exportQBOExcel(
             currentCompanyRules,
-            `QBO_Rules_${selectedCompany?.name?.replace(/ /g, '_') || 'FINZA'}_${new Date().toISOString().split('T')[0]}.xlsx`
+            `QBO_Rules_${selectedCompany?.name?.replace(/ /g, '_') || 'FINZA'}_${new Date().toISOString().split('T')[0]}.xls`
         );
     };
 
-    // ── QBO ruleType → field + operator reverse mapping ───────────
-    const fromQBORuleType = (ruleType: number): { field: string; operator: string } => {
+    // ── QBO ruleType reverse mapping (integer → field + operator) ──
+    const fromQBORuleType = (rt: number): { field: string; operator: string } => {
         const map: Record<number, { field: string; operator: string }> = {
             0:  { field: 'Description', operator: 'contains' },
             1:  { field: 'Description', operator: 'not_contains' },
@@ -429,10 +385,10 @@ export function RulesPanel() {
             15: { field: 'Reference', operator: 'equals' },
             16: { field: 'Type', operator: 'equals' },
         };
-        return map[ruleType] || { field: 'Description', operator: 'contains' };
+        return map[rt] || { field: 'Description', operator: 'contains' };
     };
 
-    // ── Excel Import (supports QBO format AND legacy format) ───────
+    // ── Excel Import (QBO .xls format OR legacy pipe format) ───────
     const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -441,86 +397,63 @@ export function RulesPanel() {
             const wb = XLSX.read(evt.target?.result, { type: "binary" });
             const ws = wb.Sheets[wb.SheetNames[0]];
             const data: any[] = XLSX.utils.sheet_to_json(ws);
-            if (data.length === 0) { alert("No data found in Excel file."); return; }
+            if (data.length === 0) { alert("No data found in file."); return; }
 
-            // Detect format: QBO uses "Rule Conditions" column with JSON
             const isQBOFormat = data[0] && 'Rule Conditions' in data[0];
             let count = 0;
 
             for (const row of data) {
                 try {
                     let parsedConditions: any[] = [];
-                    let ruleType = 'Expense';
-                    let ledger = 'Uncategorized';
-                    let matchType = 'AND';
-                    let ruleName = row['Rule Name'] || `Imported Rule ${count + 1}`;
-                    let contactId: string | undefined;
+                    let rType = 'Expense';
+                    let lLedger = 'Uncategorized';
+                    let mType = 'AND';
+                    const rName = row['Rule Name'] || `Imported Rule ${count + 1}`;
+                    let cId: string | undefined;
 
                     if (isQBOFormat) {
-                        // ── Parse QBO JSON format ──────────────────
-                        const conditionsRaw = row['Rule Conditions'] || '{}';
-                        const outputsRaw = row['Rule Outputs'] || '{}';
-
                         let conditionsParsed: any = {};
                         let outputsParsed: any = {};
-                        try { conditionsParsed = JSON.parse(conditionsRaw); } catch { /* ignore */ }
-                        try { outputsParsed = JSON.parse(outputsRaw); } catch { /* ignore */ }
+                        try { conditionsParsed = JSON.parse(row['Rule Conditions'] || '{}'); } catch { /* */ }
+                        try { outputsParsed = JSON.parse(row['Rule Outputs'] || '{}'); } catch { /* */ }
 
-                        matchType = conditionsParsed.isAndRule === false ? 'OR' : 'AND';
-
+                        mType = conditionsParsed.isAndRule === false ? 'OR' : 'AND';
                         parsedConditions = (conditionsParsed.ruleConditions || []).map((rc: any) => {
                             const { field, operator } = fromQBORuleType(rc.ruleType ?? 0);
-                            return {
-                                id: Math.random().toString(36).substr(2, 9),
-                                field,
-                                operator,
-                                value: rc.value || '',
-                            };
+                            return { id: Math.random().toString(36).substr(2, 9), field, operator, value: rc.value || '' };
                         });
-
                         for (const action of (outputsParsed.ruleActions || [])) {
-                            if (action.actionType === 0) ledger = action.value;
-                            if (action.actionType === 1) ruleType = action.value;
+                            if (action.actionType === 0) lLedger = action.value;
+                            if (action.actionType === 1) rType = action.value;
                             if (action.actionType === 2) {
-                                // Match vendor or customer by display name
-                                const contact = [...customers, ...vendors].find(
-                                    (c: any) => c.DisplayName === action.value
-                                );
-                                if (contact) contactId = contact.Id;
+                                const contact = [...customers, ...vendors].find((c: any) => c.DisplayName === action.value);
+                                if (contact) cId = contact.Id;
                             }
                         }
                     } else {
-                        // ── Parse legacy pipe-separated format ──────
                         const conditionsRaw = row['Values'] || '';
                         parsedConditions = conditionsRaw.split(';; ').map((cStr: string) => {
                             const parts = cStr.split('|');
-                            if (parts.length === 3) {
-                                return { id: Math.random().toString(36).substr(2, 9), field: parts[0], operator: parts[1], value: parts[2] };
-                            }
-                            return null;
+                            return parts.length === 3 ? { id: Math.random().toString(36).substr(2, 9), field: parts[0], operator: parts[1], value: parts[2] } : null;
                         }).filter(Boolean);
-
-                        ruleType = row['Transaction Type'] || 'Expense';
-                        ledger = row['Ledger Account'] || 'Uncategorized';
-                        matchType = row['Match Type'] || 'AND';
-
+                        rType = row['Transaction Type'] || 'Expense';
+                        lLedger = row['Ledger Account'] || 'Uncategorized';
+                        mType = row['Match Type'] || 'AND';
                         if (row['Contact Name']) {
-                            const contact = [...customers, ...vendors].find(
-                                (c: any) => c.DisplayName === row['Contact Name']
-                            );
-                            if (contact) contactId = contact.Id;
+                            const contact = [...customers, ...vendors].find((c: any) => c.DisplayName === row['Contact Name']);
+                            if (contact) cId = contact.Id;
                         }
                     }
 
                     await addRule({
                         client_id: selectedCompany.id,
-                        rule_name: ruleName,
-                        rule_type: ruleType as any,
-                        matchType: matchType as 'AND' | 'OR',
+                        rule_name: rName,
+                        rule_type: rType as any,
+                        matchType: mType as 'AND' | 'OR',
                         conditions: parsedConditions.length > 0
                             ? parsedConditions
                             : [{ id: Math.random().toString(36).substr(2, 9), field: 'Description', operator: 'contains', value: '' }],
-                        actions: { ledger, contactId },
+                        actions: { ledger: lLedger, contactId: cId },
                         is_active: true,
                     });
                     count++;
@@ -528,12 +461,11 @@ export function RulesPanel() {
                     console.error('Row import error:', err);
                 }
             }
-            alert(`Successfully imported ${count} rule${count !== 1 ? 's' : ''} (${isQBOFormat ? 'QBO format' : 'legacy format'}).`);
+            alert(`Imported ${count} rule${count !== 1 ? 's' : ''} (${isQBOFormat ? 'QBO .xls format' : 'legacy format'}).`);
             e.target.value = '';
         };
         reader.readAsBinaryString(file);
     };
-
 
     // ── Condition Summary ──────────────────────────────────────────
     const getConditionSummary = (rule: Rule) => {
@@ -546,7 +478,6 @@ export function RulesPanel() {
     const availableClients = allClientsList.filter(c => c.id !== selectedCompany?.id);
     const ledgerOptions = getLedgerOptions();
 
-    // ── Stats ─────────────────────────────────────────────────────
     const stats = {
         total: currentCompanyRules.length,
         expense: currentCompanyRules.filter(r => r.rule_type === 'Expense').length,
@@ -561,7 +492,7 @@ export function RulesPanel() {
             <div className="rounded-xl border border-border bg-gradient-to-r from-primary/5 via-card to-primary/5 p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                        <Zap className="h-4.5 w-4.5 text-primary" />
+                        <Zap className="h-4 w-4 text-primary" />
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-foreground">QBO Rule Sync</p>
@@ -585,34 +516,21 @@ export function RulesPanel() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
-                        size="sm"
-                        variant="outline"
+                        size="sm" variant="outline"
                         className="h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 gap-1.5"
                         onClick={handleSyncFromQBO}
                         disabled={isSyncing || !activeCompanyId}
                     >
-                        {isSyncing ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                            <CloudDownload className="h-3.5 w-3.5" />
-                        )}
+                        {isSyncing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CloudDownload className="h-3.5 w-3.5" />}
                         {isSyncing ? 'Scanning QBO...' : 'Pull from QBO'}
                     </Button>
                     <Button
-                        size="sm"
-                        variant="outline"
+                        size="sm" variant="outline"
                         className="h-8 text-xs font-medium border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-1.5"
-                        onClick={() => {
-                            setSelectedPushRules(currentCompanyRules.map(r => r.id));
-                            setPushDialogOpen(true);
-                        }}
+                        onClick={() => { setSelectedPushRules(currentCompanyRules.map(r => r.id)); setPushDialogOpen(true); }}
                         disabled={isPushing || !activeCompanyId || currentCompanyRules.length === 0}
                     >
-                        {isPushing ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                            <CloudUpload className="h-3.5 w-3.5" />
-                        )}
+                        {isPushing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CloudUpload className="h-3.5 w-3.5" />}
                         Push to QBO
                     </Button>
                 </div>
@@ -641,62 +559,32 @@ export function RulesPanel() {
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-sm font-semibold">Automation Rules</CardTitle>
                         <div className="flex items-center gap-2">
-                            {/* Import from client */}
-                            <Button
-                                variant="ghost" size="sm"
-                                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
-                                onClick={() => setIsImportOpen(true)}
-                                title="Import rules from another client"
-                            >
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                onClick={() => setIsImportOpen(true)} title="Copy rules from another client">
                                 <Copy className="h-3.5 w-3.5" /> Copy
                             </Button>
-                            {/* Excel import */}
-                            <Button
-                                variant="ghost" size="sm"
-                                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
-                                onClick={() => document.getElementById('rule-import-input')?.click()}
-                                title="Import from Excel"
-                            >
-                                <Upload className="h-3.5 w-3.5" /> Excel
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                onClick={() => document.getElementById('rule-import-input')?.click()} title="Import from .xls (QBO format)">
+                                <Upload className="h-3.5 w-3.5" /> Import .xls
                             </Button>
-                            <input type="file" id="rule-import-input" className="hidden" accept=".xlsx,.xls" onChange={handleExcelImport} />
-                            {/* Excel export */}
-                            <Button
-                                variant="ghost" size="sm"
-                                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
-                                onClick={handleExcelExport}
-                                title="Export to Excel"
-                            >
-                                <Download className="h-3.5 w-3.5" /> Export
+                            <input type="file" id="rule-import-input" className="hidden" accept=".xls,.xlsx" onChange={handleExcelImport} />
+                            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                onClick={handleExcelExport} title="Export as QBO-compatible .xls">
+                                <Download className="h-3.5 w-3.5" /> Export .xls
                             </Button>
-                            {/* Add rule */}
-                            <Button
-                                size="sm"
-                                className="h-7 text-xs glow-primary gap-1 font-medium"
-                                onClick={() => setIsAdding(true)}
-                            >
+                            <Button size="sm" className="h-7 text-xs glow-primary gap-1 font-medium" onClick={() => setIsAdding(true)}>
                                 <Plus className="h-3.5 w-3.5" /> New Rule
                             </Button>
                         </div>
                     </div>
-
-                    {/* Search + Filter Row */}
                     <div className="flex gap-2">
-                        <Input
-                            className="h-7 text-xs flex-1 bg-muted/30 border-border"
-                            placeholder="Search rules, accounts, conditions..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                        />
+                        <Input className="h-7 text-xs flex-1 bg-muted/30 border-border" placeholder="Search rules, accounts, conditions..."
+                            value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="h-7 text-xs w-[130px] bg-muted/30 border-border">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs w-[130px] bg-muted/30 border-border"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">All Types</SelectItem>
-                                {TRANSACTION_TYPES.map(t => (
-                                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                                ))}
+                                {TRANSACTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
@@ -704,10 +592,9 @@ export function RulesPanel() {
 
                 <CardContent className="flex-1 overflow-y-auto p-3 space-y-2">
 
-                    {/* ── Create/Edit Sheet ──────────────────────────────── */}
+                    {/* ── Create/Edit Drawer ────────────────────────────────── */}
                     <Sheet open={isAdding} onOpenChange={(open) => { if (!open) resetForm(); else setIsAdding(true); }}>
                         <SheetContent side="right" className="sm:max-w-lg w-full bg-card border-l border-border flex flex-col overflow-y-auto p-0">
-                            {/* Header */}
                             <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
                                 <SheetHeader className="p-0 space-y-1">
                                     <SheetTitle className="text-base font-bold flex items-center gap-2 text-foreground">
@@ -722,41 +609,25 @@ export function RulesPanel() {
                                 </SheetHeader>
                             </div>
 
-                            {/* Body */}
                             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-
-                                {/* Rule Name */}
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-semibold text-foreground">Rule Name</Label>
-                                    <Input
-                                        className="h-9 text-sm bg-background border-input text-foreground font-medium"
-                                        value={ruleName}
-                                        onChange={e => setRuleName(e.target.value)}
-                                        placeholder="e.g. Uber Travel Expenses"
-                                    />
+                                    <Input className="h-9 text-sm bg-background border-input text-foreground font-medium"
+                                        value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g. Uber Travel Expenses" />
                                 </div>
 
-                                {/* Money Direction Selector */}
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Applies To</Label>
                                     <div className="grid grid-cols-3 gap-1.5 p-1 bg-muted/30 rounded-lg border border-border">
                                         {[
-                                            { label: 'All', values: ['Expense', 'Income', 'Transfer', 'Check', 'Bill', 'Purchase', 'Credit Card Credit', 'Credit Note', 'Journal Entry'] as TransactionType[] },
+                                            { label: 'All', values: TRANSACTION_TYPES },
                                             { label: '💸 Money Out', values: ['Expense', 'Check', 'Bill', 'Purchase'] as TransactionType[] },
                                             { label: '💰 Money In', values: ['Income', 'Credit Note', 'Credit Card Credit'] as TransactionType[] },
                                         ].map(dir => {
-                                            const isActive = dir.label === 'All'
-                                                ? true
-                                                : dir.values.includes(ruleType);
+                                            const isActive = dir.label !== 'All' && dir.values.includes(ruleType);
                                             return (
-                                                <button
-                                                    key={dir.label}
-                                                    onClick={() => dir.values.length > 0 && setRuleType(dir.values[0])}
-                                                    className={`text-xs py-1.5 px-2 rounded-md font-medium transition-all ${isActive && dir.label !== 'All'
-                                                        ? 'bg-primary text-primary-foreground shadow'
-                                                        : 'text-muted-foreground hover:text-foreground'
-                                                        }`}
-                                                >
+                                                <button key={dir.label} onClick={() => dir.values.length > 0 && setRuleType(dir.values[0])}
+                                                    className={`text-xs py-1.5 px-2 rounded-md font-medium transition-all ${isActive ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}>
                                                     {dir.label}
                                                 </button>
                                             );
@@ -764,111 +635,68 @@ export function RulesPanel() {
                                     </div>
                                 </div>
 
-                                {/* Condition Builder */}
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        IF — Conditions
-                                    </Label>
-                                    <RuleBuilder
-                                        conditions={conditions}
-                                        matchType={matchType}
-                                        onChange={(newConditions, newType) => {
-                                            setConditions(newConditions);
-                                            setMatchType(newType);
-                                        }}
-                                    />
+                                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">IF — Conditions</Label>
+                                    <RuleBuilder conditions={conditions} matchType={matchType}
+                                        onChange={(newConditions, newType) => { setConditions(newConditions); setMatchType(newType); }} />
                                 </div>
 
-                                {/* THEN: Action Section */}
                                 <div className="space-y-3 p-4 rounded-xl border border-border bg-primary/3">
                                     <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                                        <ArrowRight className="h-3.5 w-3.5 text-primary" />
-                                        THEN — Apply Action
+                                        <ArrowRight className="h-3.5 w-3.5 text-primary" /> THEN — Apply Action
                                     </Label>
-
                                     <div className="space-y-3">
-                                        {/* Transaction Type */}
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-semibold text-foreground">Transaction Type</Label>
-                                            <Select value={ruleType} onValueChange={(val: TransactionType) => {
-                                                setRuleType(val); setLedger(""); setContactId("");
-                                            }}>
-                                                <SelectTrigger className="h-9 text-sm bg-background border-input text-foreground">
-                                                    <SelectValue />
-                                                </SelectTrigger>
+                                            <Select value={ruleType} onValueChange={(val: TransactionType) => { setRuleType(val); setLedger(""); setContactId(""); }}>
+                                                <SelectTrigger className="h-9 text-sm bg-background border-input text-foreground"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
-                                                    {TRANSACTION_TYPES.map(t => (
-                                                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                                                    ))}
+                                                    {TRANSACTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
-
-                                        {/* Ledger Account */}
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-semibold text-foreground">
                                                 {ruleType === 'Transfer' ? 'Destination Account' : ruleType === 'Income' ? 'Income Ledger' : 'Expense Ledger'}
                                             </Label>
-                                            <SearchableSelect
-                                                value={ledger}
-                                                onValueChange={setLedger}
+                                            <SearchableSelect value={ledger} onValueChange={setLedger}
                                                 options={Array.from(new Map(ledgerOptions.map(a => [a.Name, a])).values()).map(a => ({
-                                                    value: a.Name,
-                                                    label: a.Name,
+                                                    value: a.Name, label: a.Name,
                                                     sublabel: a.AccountType ? `(${a.AccountType})` : undefined
                                                 }))}
-                                                placeholder="Search Account / Ledger..."
-                                                searchPlaceholder="Type account name..."
-                                            />
+                                                placeholder="Search Account / Ledger..." searchPlaceholder="Type account name..." />
                                         </div>
-
-                                        {/* Vendor/Customer */}
                                         {!['Transfer', 'Journal Entry'].includes(ruleType) && (
                                             <div className="space-y-1.5">
                                                 <Label className="text-xs font-semibold text-foreground">
                                                     {['Income', 'Credit Note'].includes(ruleType) ? 'Customer (Optional)' : 'Vendor (Optional)'}
                                                 </Label>
-                                                <SearchableSelect
-                                                    value={contactId}
-                                                    onValueChange={setContactId}
+                                                <SearchableSelect value={contactId} onValueChange={setContactId}
                                                     options={[
                                                         { value: "none", label: "None (No Contact)" },
                                                         ...(['Income', 'Credit Note'].includes(ruleType) ? customers : vendors).map((c: any) => ({
-                                                            value: c.Id,
-                                                            label: c.DisplayName || c.CompanyName || c.Id
+                                                            value: c.Id, label: c.DisplayName || c.CompanyName || c.Id
                                                         }))
                                                     ]}
                                                     placeholder={['Income', 'Credit Note'].includes(ruleType) ? "Search Customer..." : "Search Vendor..."}
-                                                    searchPlaceholder="Type to search..."
-                                                />
+                                                    searchPlaceholder="Type to search..." />
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Auto-apply toggle */}
                                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
                                     <div>
                                         <p className="text-xs font-semibold text-foreground">Auto-apply Rule</p>
                                         <p className="text-[10px] text-muted-foreground mt-0.5">Automatically apply when uploading bank statements</p>
                                     </div>
-                                    <Switch
-                                        checked={autoApply}
-                                        onCheckedChange={setAutoApply}
-                                    />
+                                    <Switch checked={autoApply} onCheckedChange={setAutoApply} />
                                 </div>
                             </div>
 
-                            {/* Footer */}
                             <SheetFooter className="px-6 py-4 border-t border-border flex flex-row gap-2 justify-end bg-muted/20">
-                                <Button variant="outline" onClick={resetForm} className="border-border text-foreground">
-                                    Cancel
-                                </Button>
-                                <Button
-                                    className="glow-primary font-semibold flex-1"
-                                    onClick={() => void handleSave()}
-                                    disabled={!ruleName || !ledger}
-                                >
+                                <Button variant="outline" onClick={resetForm} className="border-border text-foreground">Cancel</Button>
+                                <Button className="glow-primary font-semibold flex-1" onClick={() => void handleSave()} disabled={!ruleName || !ledger}>
                                     <Save className="h-4 w-4 mr-2" />
                                     {editingId ? 'Update Rule' : 'Save Rule'}
                                 </Button>
@@ -878,22 +706,14 @@ export function RulesPanel() {
 
                     {/* ── Rule List ─────────────────────────────────────────── */}
                     {displayedRules.length > 0 ? displayedRules.map((rule, idx) => (
-                        <div
-                            key={rule.id}
-                            className="group relative rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all duration-200"
-                        >
+                        <div key={rule.id} className="group relative rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all duration-200">
                             <div className="flex items-start gap-3 p-3.5">
-                                {/* Priority number */}
                                 <div className="flex-shrink-0 h-6 w-6 rounded-full bg-muted/60 border border-border flex items-center justify-center mt-0.5">
                                     <span className="text-[10px] font-bold text-muted-foreground">{idx + 1}</span>
                                 </div>
-
                                 <div className="flex-1 min-w-0">
-                                    {/* Rule Name + Type */}
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                                            {rule.rule_name}
-                                        </p>
+                                        <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">{rule.rule_name}</p>
                                         {rule.rule_type && (
                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${TYPE_COLORS[rule.rule_type] || TYPE_COLORS['Expense']}`}>
                                                 {rule.rule_type}
@@ -901,23 +721,14 @@ export function RulesPanel() {
                                         )}
                                         <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0 ${rule.matchType === 'OR'
                                             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                                            : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'
-                                            }`}>
+                                            : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'}`}>
                                             {rule.matchType}
                                         </span>
                                     </div>
-
-                                    {/* Condition summary */}
-                                    <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
-                                        IF {getConditionSummary(rule)}
-                                    </p>
-
-                                    {/* Action */}
+                                    <p className="text-xs text-muted-foreground mt-1 font-mono truncate">IF {getConditionSummary(rule)}</p>
                                     <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-border/40">
                                         <ArrowRight className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                                        <span className="text-xs font-semibold text-foreground truncate">
-                                            {rule.actions.ledger}
-                                        </span>
+                                        <span className="text-xs font-semibold text-foreground truncate">{rule.actions.ledger}</span>
                                         {rule.actions.contactId && (
                                             <span className="text-xs text-muted-foreground truncate">
                                                 • {[...customers, ...vendors].find((c: any) => c.Id === rule.actions.contactId)?.DisplayName || 'Contact'}
@@ -925,52 +736,26 @@ export function RulesPanel() {
                                         )}
                                     </div>
                                 </div>
-
-                                {/* Right controls */}
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                    {/* ON/OFF toggle */}
-                                    <Switch
-                                        checked={rule.is_active !== false}
-                                        onCheckedChange={() => handleToggleActive(rule)}
-                                        className="data-[state=checked]:bg-primary scale-90"
-                                    />
-
-                                    {/* Kebab menu */}
+                                    <Switch checked={rule.is_active !== false} onCheckedChange={() => handleToggleActive(rule)} className="data-[state=checked]:bg-primary scale-90" />
                                     <div className="relative">
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setOpenMenuId(openMenuId === rule.id ? null : rule.id);
-                                            }}
-                                        >
+                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === rule.id ? null : rule.id); }}>
                                             <MoreVertical className="h-3.5 w-3.5" />
                                         </Button>
-
                                         {openMenuId === rule.id && (
                                             <div className="absolute right-0 top-8 z-50 bg-card border border-border rounded-xl shadow-xl py-1 w-40">
-                                                <button
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent rounded-md mx-1 w-[calc(100%-8px)]"
-                                                    onClick={() => startEdit(rule)}
-                                                >
+                                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent rounded-md mx-1 w-[calc(100%-8px)]"
+                                                    onClick={() => startEdit(rule)}>
                                                     <Pencil className="h-3.5 w-3.5" /> Edit Rule
                                                 </button>
-                                                <button
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent rounded-md mx-1 w-[calc(100%-8px)]"
-                                                    onClick={() => handleDuplicate(rule)}
-                                                >
+                                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent rounded-md mx-1 w-[calc(100%-8px)]"
+                                                    onClick={() => handleDuplicate(rule)}>
                                                     <Copy className="h-3.5 w-3.5" /> Duplicate
                                                 </button>
                                                 <div className="border-t border-border my-1" />
-                                                <button
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 rounded-md mx-1 w-[calc(100%-8px)]"
-                                                    onClick={() => {
-                                                        void deleteRule(rule.id);
-                                                        setOpenMenuId(null);
-                                                    }}
-                                                >
+                                                <button className="flex w-full items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 rounded-md mx-1 w-[calc(100%-8px)]"
+                                                    onClick={() => { void deleteRule(rule.id); setOpenMenuId(null); }}>
                                                     <Trash2 className="h-3.5 w-3.5" /> Delete
                                                 </button>
                                             </div>
@@ -988,9 +773,7 @@ export function RulesPanel() {
                                 {searchQuery || filterType !== 'All' ? 'No matching rules found' : 'No rules yet'}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto">
-                                {searchQuery || filterType !== 'All'
-                                    ? 'Try adjusting your search or filter'
-                                    : 'Click "New Rule" or pull rules from QBO to get started'}
+                                {searchQuery || filterType !== 'All' ? 'Try adjusting your search or filter' : 'Click "New Rule" or pull rules from QBO to get started'}
                             </p>
                             {!searchQuery && filterType === 'All' && (
                                 <div className="flex gap-2 justify-center mt-4">
@@ -1007,15 +790,12 @@ export function RulesPanel() {
                 </CardContent>
             </Card>
 
-            {/* ────────────────────────────────────────────────────────── */}
-            {/* QBO Sync Dialog — Import suggestions from QBO             */}
-            {/* ────────────────────────────────────────────────────────── */}
+            {/* ── QBO Sync Dialog ───────────────────────────────────────── */}
             <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
                 <DialogContent className="sm:max-w-[640px] max-h-[90vh] flex flex-col bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-foreground">
-                            <CloudDownload className="h-5 w-5 text-primary" />
-                            QBO Rule Suggestions
+                            <CloudDownload className="h-5 w-5 text-primary" /> QBO Rule Suggestions
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground text-xs">
                             {syncStats && (
@@ -1027,7 +807,6 @@ export function RulesPanel() {
                             )}
                         </DialogDescription>
                     </DialogHeader>
-
                     <div className="flex-1 overflow-y-auto space-y-2 py-2">
                         {qboSuggestions.length === 0 ? (
                             <div className="text-center py-8">
@@ -1037,15 +816,10 @@ export function RulesPanel() {
                             </div>
                         ) : (
                             <>
-                                {/* Select all */}
                                 <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg border border-border sticky top-0 z-10 backdrop-blur-sm">
-                                    <Checkbox
-                                        id="select-all-qbo"
+                                    <Checkbox id="select-all-qbo"
                                         checked={qboSuggestions.length > 0 && qboSuggestions.every(s => selectedSuggestions.includes(s.id))}
-                                        onCheckedChange={(checked: boolean) => {
-                                            setSelectedSuggestions(checked ? qboSuggestions.map(s => s.id) : []);
-                                        }}
-                                    />
+                                        onCheckedChange={(checked: boolean) => setSelectedSuggestions(checked ? qboSuggestions.map(s => s.id) : [])} />
                                     <Label htmlFor="select-all-qbo" className="text-xs font-semibold text-foreground cursor-pointer">
                                         Select All ({qboSuggestions.length} suggestions)
                                     </Label>
@@ -1053,25 +827,11 @@ export function RulesPanel() {
                                         <span className="ml-auto text-xs text-primary font-medium">{selectedSuggestions.length} selected</span>
                                     )}
                                 </div>
-
                                 {qboSuggestions.map(s => (
-                                    <div
-                                        key={s.id}
-                                        className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedSuggestions.includes(s.id)
-                                            ? 'border-primary/40 bg-primary/5'
-                                            : 'border-border bg-card hover:bg-accent/30'
-                                            }`}
-                                        onClick={() => {
-                                            setSelectedSuggestions(prev =>
-                                                prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
-                                            );
-                                        }}
-                                    >
-                                        <Checkbox
-                                            checked={selectedSuggestions.includes(s.id)}
-                                            onCheckedChange={() => { }}
-                                            className="mt-0.5"
-                                        />
+                                    <div key={s.id}
+                                        className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedSuggestions.includes(s.id) ? 'border-primary/40 bg-primary/5' : 'border-border bg-card hover:bg-accent/30'}`}
+                                        onClick={() => setSelectedSuggestions(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id])}>
+                                        <Checkbox checked={selectedSuggestions.includes(s.id)} onCheckedChange={() => { }} className="mt-0.5" />
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <p className="text-sm font-semibold text-foreground truncate">{s.suggestedName}</p>
@@ -1084,12 +844,10 @@ export function RulesPanel() {
                                             </div>
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 IF description contains <span className="font-mono text-foreground">&quot;{s.keyword}&quot;</span>
-                                                {' '} → <span className="font-semibold text-foreground">{s.accountName}</span>
+                                                {' '}→ <span className="font-semibold text-foreground">{s.accountName}</span>
                                             </p>
                                             {s.samples.length > 0 && (
-                                                <p className="text-[10px] text-muted-foreground/70 mt-1 italic truncate">
-                                                    e.g. &quot;{s.samples[0]}&quot;
-                                                </p>
+                                                <p className="text-[10px] text-muted-foreground/70 mt-1 italic truncate">e.g. &quot;{s.samples[0]}&quot;</p>
                                             )}
                                         </div>
                                         <ArrowRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
@@ -1098,16 +856,9 @@ export function RulesPanel() {
                             </>
                         )}
                     </div>
-
                     <DialogFooter className="border-t border-border pt-3 gap-2">
-                        <Button variant="outline" onClick={() => setSyncDialogOpen(false)} className="border-border">
-                            Cancel
-                        </Button>
-                        <Button
-                            className="glow-primary font-semibold"
-                            onClick={handleImportSuggestions}
-                            disabled={selectedSuggestions.length === 0}
-                        >
+                        <Button variant="outline" onClick={() => setSyncDialogOpen(false)} className="border-border">Cancel</Button>
+                        <Button className="glow-primary font-semibold" onClick={handleImportSuggestions} disabled={selectedSuggestions.length === 0}>
                             <CloudDownload className="h-4 w-4 mr-2" />
                             Import {selectedSuggestions.length > 0 ? `${selectedSuggestions.length} Rules` : 'Selected'}
                         </Button>
@@ -1115,52 +866,34 @@ export function RulesPanel() {
                 </DialogContent>
             </Dialog>
 
-            {/* ────────────────────────────────────────────────────────── */}
-            {/* Push to QBO Dialog                                        */}
-            {/* ────────────────────────────────────────────────────────── */}
+            {/* ── Push to QBO Dialog ────────────────────────────────────── */}
             <Dialog open={pushDialogOpen} onOpenChange={setPushDialogOpen}>
                 <DialogContent className="sm:max-w-[560px] max-h-[85vh] flex flex-col bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-foreground">
-                            <CloudUpload className="h-5 w-5 text-emerald-500" />
-                            Push Rules to QBO
+                            <CloudUpload className="h-5 w-5 text-emerald-500" /> Push Rules to QBO
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
-                            Select rules to export. This will apply them to categorize existing QBO transactions and download a JSON manifest for accountants.
+                            Select rules to export as a QBO-compatible Excel 97-2003 (.xls) file that can be imported directly into QuickBooks Online.
                         </DialogDescription>
                     </DialogHeader>
-
                     <div className="flex-1 overflow-y-auto space-y-2 py-2">
                         <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg border border-border sticky top-0 z-10 backdrop-blur-sm">
-                            <Checkbox
-                                id="select-all-push"
+                            <Checkbox id="select-all-push"
                                 checked={currentCompanyRules.length > 0 && currentCompanyRules.every(r => selectedPushRules.includes(r.id))}
-                                onCheckedChange={(checked: boolean) => {
-                                    setSelectedPushRules(checked ? currentCompanyRules.map(r => r.id) : []);
-                                }}
-                            />
+                                onCheckedChange={(checked: boolean) => setSelectedPushRules(checked ? currentCompanyRules.map(r => r.id) : [])} />
                             <Label htmlFor="select-all-push" className="text-xs font-semibold text-foreground cursor-pointer">
                                 Select All ({currentCompanyRules.length} rules)
                             </Label>
                         </div>
-
                         {currentCompanyRules.map(rule => (
-                            <div
-                                key={rule.id}
-                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedPushRules.includes(rule.id)
-                                    ? 'border-emerald-500/40 bg-emerald-500/5'
-                                    : 'border-border bg-card hover:bg-accent/30'
-                                    }`}
-                                onClick={() => setSelectedPushRules(prev =>
-                                    prev.includes(rule.id) ? prev.filter(id => id !== rule.id) : [...prev, rule.id]
-                                )}
-                            >
+                            <div key={rule.id}
+                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedPushRules.includes(rule.id) ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-border bg-card hover:bg-accent/30'}`}
+                                onClick={() => setSelectedPushRules(prev => prev.includes(rule.id) ? prev.filter(id => id !== rule.id) : [...prev, rule.id])}>
                                 <Checkbox checked={selectedPushRules.includes(rule.id)} onCheckedChange={() => { }} />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-foreground truncate">{rule.rule_name}</p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                        {getConditionSummary(rule)} → {rule.actions.ledger}
-                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">{getConditionSummary(rule)} → {rule.actions.ledger}</p>
                                 </div>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${TYPE_COLORS[rule.rule_type] || TYPE_COLORS['Expense']}`}>
                                     {rule.rule_type}
@@ -1168,39 +901,29 @@ export function RulesPanel() {
                             </div>
                         ))}
                     </div>
-
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
-                            This exports a JSON manifest file and applies rules to categorize QBO transactions. QBO&apos;s public API does not support direct bank rule creation.
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 flex gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                            Exports as <strong>Excel 97-2003 (.xls)</strong> — the exact format required by QBO&apos;s bank rules importer.
                         </p>
                     </div>
-
                     <DialogFooter className="border-t border-border pt-3 gap-2">
-                        <Button variant="outline" onClick={() => setPushDialogOpen(false)} className="border-border">
-                            Cancel
-                        </Button>
-                        <Button
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                            onClick={handlePushToQBO}
-                            disabled={selectedPushRules.length === 0 || isPushing}
-                        >
+                        <Button variant="outline" onClick={() => setPushDialogOpen(false)} className="border-border">Cancel</Button>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                            onClick={handlePushToQBO} disabled={selectedPushRules.length === 0 || isPushing}>
                             {isPushing ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <CloudUpload className="h-4 w-4 mr-2" />}
-                            {isPushing ? 'Exporting...' : `Export ${selectedPushRules.length > 0 ? `${selectedPushRules.length} Rules` : ''}`}
+                            {isPushing ? 'Exporting...' : `Export ${selectedPushRules.length > 0 ? `${selectedPushRules.length} Rules as .xls` : ''}`}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* ────────────────────────────────────────────────────────── */}
-            {/* Import from Client Dialog                                 */}
-            {/* ────────────────────────────────────────────────────────── */}
+            {/* ── Import from Client Dialog ─────────────────────────────── */}
             <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
                 <DialogContent className="sm:max-w-[500px] bg-card border-border">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-foreground">
-                            <Copy className="h-4 w-4 text-primary" />
-                            Copy Rules from Client
+                            <Copy className="h-4 w-4 text-primary" /> Copy Rules from Client
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
                             Import automation rules from another connected client.
@@ -1210,33 +933,20 @@ export function RulesPanel() {
                         <div className="space-y-1.5">
                             <Label className="text-xs font-semibold text-foreground">Source Client</Label>
                             <Select value={importClient} onValueChange={setImportClient}>
-                                <SelectTrigger className="bg-background border-input">
-                                    <SelectValue placeholder="Choose client..." />
-                                </SelectTrigger>
+                                <SelectTrigger className="bg-background border-input"><SelectValue placeholder="Choose client..." /></SelectTrigger>
                                 <SelectContent>
-                                    {availableClients.map(client => (
-                                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                                    ))}
-                                    {availableClients.length === 0 && (
-                                        <div className="p-2 text-xs text-muted-foreground italic">No other clients connected</div>
-                                    )}
+                                    {availableClients.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}
+                                    {availableClients.length === 0 && <div className="p-2 text-xs text-muted-foreground italic">No other clients connected</div>}
                                 </SelectContent>
                             </Select>
                         </div>
-
                         {importClient && (
                             <div className="border border-border rounded-xl p-2 h-[280px] overflow-y-auto bg-muted/10">
                                 <div className="flex items-center gap-2 p-2 border-b border-border mb-2 sticky top-0 bg-card/80 backdrop-blur-sm z-10 rounded-t-lg">
-                                    <Checkbox
-                                        id="select-all-import"
+                                    <Checkbox id="select-all-import"
                                         checked={clientRulesList.length > 0 && clientRulesList.every(r => selectedImportRules.includes(r.id))}
-                                        onCheckedChange={(checked: boolean) =>
-                                            setSelectedImportRules(checked ? clientRulesList.map(r => r.id) : [])
-                                        }
-                                    />
-                                    <Label htmlFor="select-all-import" className="text-xs font-semibold cursor-pointer text-foreground">
-                                        Select All
-                                    </Label>
+                                        onCheckedChange={(checked: boolean) => setSelectedImportRules(checked ? clientRulesList.map(r => r.id) : [])} />
+                                    <Label htmlFor="select-all-import" className="text-xs font-semibold cursor-pointer text-foreground">Select All</Label>
                                 </div>
                                 {isFetchingClientRules ? (
                                     <div className="flex justify-center py-8">
@@ -1247,10 +957,7 @@ export function RulesPanel() {
                                 ) : (
                                     clientRulesList.map(rule => (
                                         <div key={rule.id} className="flex items-start gap-2 p-2 hover:bg-accent rounded-lg transition-colors cursor-pointer"
-                                            onClick={() => setSelectedImportRules(prev =>
-                                                prev.includes(rule.id) ? prev.filter(id => id !== rule.id) : [...prev, rule.id]
-                                            )}
-                                        >
+                                            onClick={() => setSelectedImportRules(prev => prev.includes(rule.id) ? prev.filter(id => id !== rule.id) : [...prev, rule.id])}>
                                             <Checkbox checked={selectedImportRules.includes(rule.id)} onCheckedChange={() => { }} className="mt-0.5" />
                                             <div>
                                                 <p className="text-sm font-medium text-foreground">{rule.rule_name}</p>
@@ -1271,10 +978,7 @@ export function RulesPanel() {
                 </DialogContent>
             </Dialog>
 
-            {/* Click outside to close kebab menu */}
-            {openMenuId && (
-                <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
-            )}
+            {openMenuId && <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />}
         </div>
     );
 }
